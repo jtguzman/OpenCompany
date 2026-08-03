@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 # Fields fetched per message. bodyPreview keeps the payload small; the
 # full body is included so downstream nodes have it without a second call.
-_SELECT = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,isRead,webLink,conversationId"
+_SELECT = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,isRead,hasAttachments,webLink,conversationId"
 
 
 class MailReceiveParams(BaseModel):
@@ -63,6 +63,7 @@ class MailReceiveOutput(BaseModel):
     body: Optional[str] = None
     received: Optional[str] = None
     is_read: Optional[bool] = None
+    has_attachments: Optional[bool] = None
     web_link: Optional[str] = None
 
     model_config = ConfigDict(extra="allow")
@@ -81,6 +82,7 @@ def _summarize(msg: Dict[str, Any]) -> Dict[str, Any]:
         "body": (msg.get("body") or {}).get("content", ""),
         "received": msg.get("receivedDateTime"),
         "is_read": msg.get("isRead"),
+        "has_attachments": msg.get("hasAttachments"),
         "web_link": msg.get("webLink"),
     }
 

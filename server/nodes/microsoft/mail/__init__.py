@@ -1,31 +1,39 @@
 """Outlook Mail via Microsoft Graph — multi-op ActionNode + AI tool.
 
 Operations (dispatched off ``params.operation``):
-- send   -> POST /me/sendMail
-- read   -> GET  /me/messages/{id}  (or GET /me/messages?$top= when no id)
-- search -> GET  /me/messages?$search="..."
-- reply  -> POST /me/messages/{id}/reply
+- send                 -> POST /me/sendMail
+- read                 -> GET  /me/messages/{id}  (or GET /me/messages?$top= when no id)
+- search               -> GET  /me/messages?$search="..."
+- reply                -> POST /me/messages/{id}/reply
+- list_attachments     -> GET  /me/messages/{id}/attachments?$select=... (metadata only)
+- download_attachments -> GET  /me/messages/{id}/attachments (base64 contentBytes ->
+                          workspace files); pairs with the documentParser node for text.
 """
 
 from __future__ import annotations
 
+import base64
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from services.plugin import ActionNode, NodeContext, NodeUserError, Operation, TaskQueue
 
-from .._base import graph_request, track_microsoft_usage
+from .._base import graph_request, track_microsoft_usage, write_attachment_bytes
 from .._credentials import MicrosoftCredential
 
 _SEND = {"displayOptions": {"show": {"operation": ["send"]}}}
 _READ = {"displayOptions": {"show": {"operation": ["read"]}}}
 _SEARCH = {"displayOptions": {"show": {"operation": ["search"]}}}
 _REPLY = {"displayOptions": {"show": {"operation": ["reply"]}}}
+_ATTACH = {"displayOptions": {"show": {"operation": ["list_attachments", "download_attachments"]}}}
+
+# Graph attachment @odata.type discriminators.
+_FILE_ATTACHMENT = "#microsoft.graph.fileAttachment"
 
 
 class MailParams(BaseModel):
-    operation: Literal["send", "read", "search", "reply"] = "send"
+    operation: Literal["send", "read", "search", "reply", "list_attachments", "download_attachments"] = "send"
 
     # Send
     to: str = Field(
@@ -41,8 +49,12 @@ class MailParams(BaseModel):
     )
     body_type: Literal["text", "html"] = Field(default="text", json_schema_extra=_SEND)
 
-    # Read (message_id optional: omit to list recent messages)
-    message_id: str = Field(default="", json_schema_extra=_READ)
+    # Read (message_id optional: omit to list recent messages). message_id is
+    # also the parent-message field for the attachment ops, so it shows there too.
+    message_id: str = Field(
+        default="",
+        json_schema_extra={"displayOptions": {"show": {"operation": ["read", "list_attachments", "download_attachments"]}}},
+    )
     max_results: int = Field(default=10, ge=1, le=100, json_schema_extra=_READ)
 
     # Search
@@ -60,6 +72,15 @@ class MailParams(BaseModel):
     )
     reply_all: bool = Field(default=False, json_schema_extra=_REPLY)
 
+    # Attachments (list_attachments / download_attachments). Reuses message_id
+    # above as the parent message. attachment_id downloads just one; empty = all.
+    attachment_id: str = Field(default="", json_schema_extra=_ATTACH)
+    include_inline: bool = Field(
+        default=False,
+        description="Include inline body images (e.g. signature logos). Off by default.",
+        json_schema_extra=_ATTACH,
+    )
+
     model_config = ConfigDict(extra="ignore")
 
 
@@ -75,9 +96,14 @@ class MailOutput(BaseModel):
     body_preview: Optional[str] = None
     body: Optional[str] = None
     web_link: Optional[str] = None
+    has_attachments: Optional[bool] = None
     messages: Optional[List[dict]] = None
     count: Optional[int] = None
     query: Optional[str] = None
+    # Attachment ops
+    attachments: Optional[List[dict]] = None
+    download_dir: Optional[str] = None
+    skipped: Optional[List[dict]] = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -99,6 +125,7 @@ def _summarize(msg: dict) -> dict:
         "received": msg.get("receivedDateTime"),
         "body_preview": msg.get("bodyPreview", ""),
         "is_read": msg.get("isRead"),
+        "has_attachments": msg.get("hasAttachments"),
         "web_link": msg.get("webLink"),
     }
 
@@ -112,9 +139,12 @@ class MailNode(ActionNode):
     component_kind = "square"
     tool_name = "ms_mail"
     tool_description = (
-        "Send, read, search, and reply to Outlook email via Microsoft Graph. "
+        "Send, read, search, reply to, and handle attachments of Outlook email via Microsoft Graph. "
         "Operations: send (compose), read (get message by ID or list recent), "
-        "search (find messages by text), reply (respond to a message)."
+        "search (find messages by text), reply (respond to a message), "
+        "list_attachments (metadata for a message's attachments), "
+        "download_attachments (save file attachments to the workspace; returns paths "
+        "for the document parser). read/search results include has_attachments."
     )
     handles = (
         {"name": "input-main", "kind": "input", "position": "left", "label": "Input", "role": "main"},
@@ -128,7 +158,7 @@ class MailNode(ActionNode):
     Params = MailParams
     Output = MailOutput
 
-    _SELECT = "id,subject,from,receivedDateTime,bodyPreview,isRead,webLink"
+    _SELECT = "id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments,webLink"
 
     @Operation("dispatch")
     async def dispatch(self, ctx: NodeContext, params: MailParams) -> MailOutput:
@@ -142,6 +172,10 @@ class MailNode(ActionNode):
             return await self._search(ctx, params)
         if op == "reply":
             return await self._reply(ctx, params)
+        if op == "list_attachments":
+            return await self._list_attachments(ctx, params)
+        if op == "download_attachments":
+            return await self._download_attachments(ctx, params)
         raise NodeUserError(f"Unknown Mail operation: {op}")
 
     async def _send(self, ctx: NodeContext, params: MailParams) -> MailOutput:
@@ -193,6 +227,7 @@ class MailNode(ActionNode):
                 received=summary["received"],
                 body_preview=summary["body_preview"],
                 body=body,
+                has_attachments=summary["has_attachments"],
                 web_link=summary["web_link"],
             )
 
@@ -250,3 +285,114 @@ class MailNode(ActionNode):
         )
         await track_microsoft_usage(ctx.node_id, "reply", 1, ctx.raw)
         return MailOutput(operation="reply", replied=True, message_id=params.reply_message_id)
+
+    async def _list_attachments(self, ctx: NodeContext, params: MailParams) -> MailOutput:
+        if not params.message_id:
+            raise NodeUserError("message_id is required to list attachments")
+        # Metadata only — $select excludes contentBytes so no payload is fetched.
+        data = await graph_request(
+            ctx,
+            "GET",
+            f"/me/messages/{params.message_id}/attachments",
+            params={"$select": "id,name,contentType,size,isInline"},
+        )
+        items = (data or {}).get("value", [])
+        attachments = []
+        for a in items:
+            is_inline = bool(a.get("isInline"))
+            if is_inline and not params.include_inline:
+                continue
+            odata = a.get("@odata.type", "")
+            attachments.append(
+                {
+                    "attachment_id": a.get("id"),
+                    "name": a.get("name"),
+                    "content_type": a.get("contentType"),
+                    "size": a.get("size"),
+                    "is_inline": is_inline,
+                    # "file" for downloadable fileAttachment; else the Graph
+                    # subtype (item / reference) so the caller sees why a
+                    # download op would skip it.
+                    "kind": "file" if odata == _FILE_ATTACHMENT else odata.split(".")[-1] or "unknown",
+                }
+            )
+        await track_microsoft_usage(ctx.node_id, "list_attachments", len(attachments), ctx.raw)
+        return MailOutput(operation="list_attachments", attachments=attachments, count=len(attachments))
+
+    async def _download_attachments(self, ctx: NodeContext, params: MailParams) -> MailOutput:
+        from services.media.limits import MEDIA_MAX_READ_BYTES
+
+        if not params.message_id:
+            raise NodeUserError("message_id is required to download attachments")
+
+        # Full fetch — fileAttachments carry base64 contentBytes inline. For
+        # attachments >3 MB Graph may omit contentBytes and require the
+        # session upload/download API; that's out of scope (the >25 MiB guard
+        # below skips oversize items rather than blowing the media read cap).
+        if params.attachment_id:
+            single = await graph_request(
+                ctx,
+                "GET",
+                f"/me/messages/{params.message_id}/attachments/{params.attachment_id}",
+            )
+            items = [single] if single else []
+        else:
+            data = await graph_request(
+                ctx,
+                "GET",
+                f"/me/messages/{params.message_id}/attachments",
+            )
+            items = (data or {}).get("value", [])
+
+        downloaded = []
+        skipped = []
+        for a in items:
+            name = a.get("name") or "attachment"
+            odata = a.get("@odata.type", "")
+            if odata != _FILE_ATTACHMENT:
+                skipped.append({"name": name, "reason": f"unsupported type {odata.split('.')[-1] or 'unknown'}"})
+                continue
+            if a.get("isInline") and not params.include_inline:
+                skipped.append({"name": name, "reason": "inline"})
+                continue
+            content_b64 = a.get("contentBytes")
+            if not content_b64:
+                skipped.append({"name": name, "reason": "no contentBytes (may exceed Graph inline size)"})
+                continue
+            payload = base64.b64decode(content_b64)
+            if len(payload) > MEDIA_MAX_READ_BYTES:
+                skipped.append({"name": name, "reason": f"exceeds {MEDIA_MAX_READ_BYTES} byte limit"})
+                continue
+
+            ref, abs_path = write_attachment_bytes(
+                payload,
+                ctx=ctx,
+                filename=name,
+                mime_type=a.get("contentType"),
+            )
+            downloaded.append(
+                {
+                    "filename": name,
+                    "path": abs_path,  # absolute — feeds documentParser.file_path
+                    "mime_type": a.get("contentType"),
+                    "size": len(payload),
+                    "ref": ref.model_dump(mode="json"),
+                }
+            )
+
+        if not downloaded:
+            detail = f" (skipped: {skipped})" if skipped else ""
+            raise NodeUserError(f"No downloadable file attachments on message {params.message_id}{detail}")
+
+        # download_dir (absolute workspace attachments/ dir) feeds documentParser.input_dir.
+        from pathlib import Path as _Path
+
+        download_dir = str(_Path(downloaded[0]["path"]).parent)
+        await track_microsoft_usage(ctx.node_id, "download_attachments", len(downloaded), ctx.raw)
+        return MailOutput(
+            operation="download_attachments",
+            attachments=downloaded,
+            download_dir=download_dir,
+            count=len(downloaded),
+            skipped=skipped or None,
+        )
