@@ -359,3 +359,119 @@ class TestEnsureFreshToken:
         _, kwargs = auth.store_oauth_tokens.call_args
         assert kwargs["access_token"] == "new"
         assert kwargs["refresh_token"] == "rt2"
+
+
+# ============================================================================
+# msMailReceive (polling trigger)
+# ============================================================================
+
+
+@contextmanager
+def _fresh_token():
+    """Skip the token-freshness resolve so ctx-free Graph helpers just run."""
+    with patch("nodes.microsoft._base.ensure_fresh_microsoft_token", new=AsyncMock(return_value="tok_ms")):
+        yield
+
+
+class TestMsMailReceive:
+    def test_registration(self):
+        from services.node_registry import get_node_class
+
+        cls = get_node_class("msMailReceive")
+        assert cls is not None
+        assert cls.mode == "polling"
+        assert cls.event_type == "ms_mail_received"
+        assert cls.task_queue == "triggers-poll"
+        # Trigger nodes are not AI tools.
+        assert getattr(cls, "usable_as_tool", False) is False
+
+    def test_query_defaults_to_unread(self):
+        from nodes.microsoft.mail_receive import _list_path, _query
+
+        q = _query({"only_unread": True})
+        assert q["$filter"] == "isRead eq false"
+        assert _list_path({}) == "/me/mailFolders/inbox/messages"
+
+    def test_query_from_filter_and_folder(self):
+        from nodes.microsoft.mail_receive import _list_path, _query
+
+        q = _query({"only_unread": True, "from_filter": "jane@contoso.com"})
+        assert "isRead eq false" in q["$filter"]
+        assert "from/emailAddress/address eq 'jane@contoso.com'" in q["$filter"]
+        assert _list_path({"folder": "sentitems"}) == "/me/mailFolders/sentitems/messages"
+
+    def test_query_from_filter_escapes_single_quote(self):
+        from nodes.microsoft.mail_receive import _query
+
+        q = _query({"only_unread": False, "from_filter": "o'brien@contoso.com"})
+        assert "from/emailAddress/address eq 'o''brien@contoso.com'" == q["$filter"]
+
+    @respx.mock
+    async def test_fetch_ids_hits_mailfolder_messages(self):
+        from nodes.microsoft.mail_receive import MailReceiveNode
+
+        route = respx.get(f"{GRAPH}/me/mailFolders/inbox/messages").mock(
+            return_value=httpx.Response(200, json={"value": [{"id": "M1"}, {"id": "M2"}]})
+        )
+        node = MailReceiveNode()
+        params = {"only_unread": True}
+        with _fresh_token():
+            ids = await node.fetch_ids(await node.setup_service(params), params)
+        assert ids == {"M1", "M2"}
+        assert route.called
+        assert respx.calls.last.request.url.params["$filter"] == "isRead eq false"
+
+    @respx.mock
+    async def test_fetch_detail_summarizes(self):
+        from nodes.microsoft.mail_receive import MailReceiveNode
+
+        respx.get(f"{GRAPH}/me/messages/M1").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": "M1",
+                    "subject": "Hello",
+                    "from": {"emailAddress": {"address": "jane@contoso.com", "name": "Jane"}},
+                    "toRecipients": [{"emailAddress": {"address": "me@contoso.com"}}],
+                    "receivedDateTime": "2026-08-01T10:00:00Z",
+                    "bodyPreview": "hi",
+                    "body": {"content": "<p>hi</p>"},
+                    "isRead": False,
+                    "webLink": "https://outlook/M1",
+                    "conversationId": "C1",
+                },
+            )
+        )
+        node = MailReceiveNode()
+        with _fresh_token():
+            detail = await node.fetch_detail(None, "M1", {})
+        assert detail["id"] == "M1"
+        assert detail["from"] == "jane@contoso.com"
+        assert detail["subject"] == "Hello"
+        assert detail["conversation_id"] == "C1"
+
+    @respx.mock
+    async def test_post_emit_marks_read_when_enabled(self):
+        from nodes.microsoft.mail_receive import MailReceiveNode
+
+        route = respx.patch(f"{GRAPH}/me/messages/M1").mock(return_value=httpx.Response(200, json={"id": "M1"}))
+        node = MailReceiveNode()
+        with _fresh_token():
+            await node.post_emit(None, "M1", {"mark_as_read": True})
+        assert route.called
+
+    @respx.mock
+    async def test_post_emit_noop_when_disabled(self):
+        from nodes.microsoft.mail_receive import MailReceiveNode
+
+        route = respx.patch(f"{GRAPH}/me/messages/M1").mock(return_value=httpx.Response(200))
+        node = MailReceiveNode()
+        with _fresh_token():
+            await node.post_emit(None, "M1", {"mark_as_read": False})
+        assert not route.called
+
+    def test_output_params_flat(self):
+        from nodes.microsoft.mail_receive import MailReceiveParams
+
+        schema = MailReceiveParams.model_json_schema()
+        assert "$defs" not in schema and "definitions" not in schema

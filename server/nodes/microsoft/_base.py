@@ -75,6 +75,45 @@ async def graph_request(
         return None
 
 
+async def graph_get_raw(
+    path: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    user_id: str = "owner",
+) -> Dict[str, Any]:
+    """Authed Graph GET for contexts without a NodeContext / Connection.
+
+    The polling-trigger hooks (``fetch_ids`` / ``fetch_detail``) run inside
+    the deployment loop and the Temporal poll activity — neither has a
+    ``ctx`` to source the :class:`Connection` factory from. This helper
+    resolves a fresh token via :func:`ensure_fresh_microsoft_token` and
+    issues a plain httpx GET with the bearer header.
+
+    Raises:
+        NodeUserError: on a non-2xx Graph response.
+    """
+    token = await ensure_fresh_microsoft_token(user_id)
+    url = path if path.startswith("http") else f"{GRAPH_BASE_URL}{path}"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(url, params=params, headers={"Authorization": f"Bearer {token}"})
+    if response.status_code >= 400:
+        raise NodeUserError(_format_graph_error(response))
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except (ValueError, httpx.DecodingError):
+        return {}
+
+
+async def mark_message_read_raw(message_id: str, *, user_id: str = "owner") -> None:
+    """PATCH a message's ``isRead`` flag to true (ctx-free; best-effort caller)."""
+    token = await ensure_fresh_microsoft_token(user_id)
+    url = f"{GRAPH_BASE_URL}/me/messages/{message_id}"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        await client.patch(url, json={"isRead": True}, headers={"Authorization": f"Bearer {token}"})
+
+
 def _format_graph_error(response: httpx.Response) -> str:
     """Extract Microsoft Graph's structured error message for a user-facing warning."""
     try:
