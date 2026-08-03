@@ -21,6 +21,7 @@ and the status broadcaster pick up the plugin's surface without ever
 importing this module by name.
 """
 
+from services.deployment.canary_registry import register_canary_trigger_type
 from services.status_broadcaster import register_service_refresh
 from services.ws_handler_registry import (
     register_oauth_callback_path,
@@ -36,3 +37,9 @@ register_ws_handlers(WS_HANDLERS)
 register_router(_router.router, name="microsoft")
 register_oauth_callback_path("microsoft", "/api/microsoft/callback")
 register_service_refresh(refresh_microsoft_status)
+
+# Opt msMailReceive into the PollingTriggerWorkflow consumer path. The
+# per-cycle Temporal activity is emitted by MailReceiveNode.as_poll_activity()
+# (auto-collected by the worker); the CloudEvents type must match the
+# producer so DeploymentManager's EventType Search Attribute lines up.
+register_canary_trigger_type("msMailReceive", "com.opencompany.msmail.message.received")
