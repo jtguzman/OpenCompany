@@ -81,6 +81,8 @@
         "_default": 200000
       },
       "thinking_type": "budget",
+      "_legacy_sampling_note": "Anthropic removed temperature/top_p/top_k AND the thinking {type:enabled,budget_tokens} shape starting at Opus 4.7 / Sonnet 5. Modern models (opus-5, opus-4-8, opus-4-7, sonnet-5, fable-5, mythos-5) return 400 on those params and require adaptive thinking. Only the prefixes below still accept sampling params + budget thinking; anything not listed (incl. future models) defaults to the modern contract.",
+      "legacy_sampling_prefixes": ["claude-opus-4-6", "claude-opus-4-5", "claude-opus-4-1", "claude-opus-4-0", "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-sonnet-4-0", "claude-haiku-4-5", "claude-3", "claude-2"],
       "temperature_range": [0.0, 1.0]
     },
     "gemini": {
