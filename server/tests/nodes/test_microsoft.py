@@ -475,3 +475,179 @@ class TestMsMailReceive:
 
         schema = MailReceiveParams.model_json_schema()
         assert "$defs" not in schema and "definitions" not in schema
+
+
+# ============================================================================
+# msMail attachments (list + download)
+# ============================================================================
+
+import base64  # noqa: E402
+
+_FILE_ODATA = "#microsoft.graph.fileAttachment"
+_ITEM_ODATA = "#microsoft.graph.itemAttachment"
+
+
+def _attachment(name, *, odata=_FILE_ODATA, inline=False, content=b"", ctype="application/pdf", aid="A1"):
+    a = {
+        "@odata.type": odata,
+        "id": aid,
+        "name": name,
+        "contentType": ctype,
+        "size": len(content),
+        "isInline": inline,
+    }
+    if content:
+        a["contentBytes"] = base64.b64encode(content).decode()
+    return a
+
+
+class TestMsMailHasAttachments:
+    def test_select_includes_hasattachments(self):
+        from nodes.microsoft.mail import MailNode
+
+        assert "hasAttachments" in MailNode._SELECT
+
+    def test_receive_select_includes_hasattachments(self):
+        from nodes.microsoft.mail_receive import _SELECT
+
+        assert "hasAttachments" in _SELECT
+
+    def test_summarize_surfaces_has_attachments(self):
+        from nodes.microsoft.mail import _summarize
+
+        out = _summarize({"id": "M1", "hasAttachments": True})
+        assert out["has_attachments"] is True
+
+
+class TestMsMailListAttachments:
+    @respx.mock
+    async def test_list_excludes_inline_by_default(self, harness):
+        respx.get(f"{GRAPH}/me/messages/M1/attachments").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "value": [
+                        _attachment("quote.pdf", aid="A1"),
+                        _attachment("logo.png", inline=True, ctype="image/png", aid="A2"),
+                        {"@odata.type": _ITEM_ODATA, "id": "A3", "name": "embedded.eml", "size": 10, "isInline": False},
+                    ]
+                },
+            )
+        )
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute("msMail", {"operation": "list_attachments", "message_id": "M1"})
+
+        harness.assert_envelope(result, success=True)
+        names = [a["name"] for a in result["result"]["attachments"]]
+        assert "quote.pdf" in names
+        assert "logo.png" not in names  # inline excluded by default
+        # item attachment surfaces in listing but tagged non-file
+        item = next(a for a in result["result"]["attachments"] if a["name"] == "embedded.eml")
+        assert item["kind"] == "itemAttachment"
+        pdf = next(a for a in result["result"]["attachments"] if a["name"] == "quote.pdf")
+        assert pdf["kind"] == "file"
+        # metadata-only fetch
+        assert respx.calls.last.request.url.params["$select"] == "id,name,contentType,size,isInline"
+
+    @respx.mock
+    async def test_list_includes_inline_when_requested(self, harness):
+        respx.get(f"{GRAPH}/me/messages/M1/attachments").mock(
+            return_value=httpx.Response(200, json={"value": [_attachment("logo.png", inline=True, ctype="image/png")]})
+        )
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msMail",
+                {"operation": "list_attachments", "message_id": "M1", "include_inline": True},
+            )
+        assert result["result"]["count"] == 1
+
+    async def test_list_requires_message_id(self, harness):
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute("msMail", {"operation": "list_attachments"})
+        harness.assert_envelope(result, success=False)
+        assert "message_id" in result["error"].lower()
+
+
+class TestMsMailDownloadAttachments:
+    @respx.mock
+    async def test_download_writes_file_and_returns_path(self, harness, tmp_path):
+        pdf_bytes = b"%PDF-1.4 fake pdf body"
+        respx.get(f"{GRAPH}/me/messages/M1/attachments").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "value": [
+                        _attachment("quote.pdf", content=pdf_bytes, aid="A1"),
+                        _attachment("logo.png", inline=True, content=b"img", ctype="image/png", aid="A2"),
+                    ]
+                },
+            )
+        )
+        ctx = harness.build_context(workspace_dir=str(tmp_path))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msMail",
+                {"operation": "download_attachments", "message_id": "M1"},
+                context=ctx,
+            )
+
+        harness.assert_envelope(result, success=True)
+        payload = result["result"]
+        assert payload["count"] == 1  # inline logo skipped
+        att = payload["attachments"][0]
+        assert att["filename"] == "quote.pdf"
+        # file actually written under attachments/ with real bytes
+        from pathlib import Path
+
+        written = Path(att["path"])
+        assert written.is_absolute() and written.exists()
+        assert written.read_bytes() == pdf_bytes
+        assert written.parent.name == "attachments"
+        assert payload["download_dir"] == str(written.parent)
+        # FileRef is kind=file (never audio), and NO raw bytes leak into output
+        assert att["ref"]["kind"] == "file"
+        assert "contentBytes" not in att and "data" not in att
+        assert "contentBytes" not in str(payload)
+        # inline recorded in skipped
+        assert any(s["reason"] == "inline" for s in (payload.get("skipped") or []))
+
+    @respx.mock
+    async def test_download_single_attachment_by_id(self, harness, tmp_path):
+        route = respx.get(f"{GRAPH}/me/messages/M1/attachments/A1").mock(
+            return_value=httpx.Response(200, json=_attachment("quote.pdf", content=b"%PDF-1.4 x", aid="A1"))
+        )
+        ctx = harness.build_context(workspace_dir=str(tmp_path))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msMail",
+                {"operation": "download_attachments", "message_id": "M1", "attachment_id": "A1"},
+                context=ctx,
+            )
+        harness.assert_envelope(result, success=True)
+        assert route.called
+        assert result["result"]["count"] == 1
+
+    @respx.mock
+    async def test_download_no_file_attachments_is_user_error(self, harness, tmp_path):
+        respx.get(f"{GRAPH}/me/messages/M1/attachments").mock(
+            return_value=httpx.Response(
+                200,
+                json={"value": [{"@odata.type": _ITEM_ODATA, "id": "A3", "name": "embedded.eml", "size": 10}]},
+            )
+        )
+        ctx = harness.build_context(workspace_dir=str(tmp_path))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msMail",
+                {"operation": "download_attachments", "message_id": "M1"},
+                context=ctx,
+            )
+        harness.assert_envelope(result, success=False)
+        assert "no downloadable file attachments" in result["error"].lower()
+
+    async def test_download_requires_message_id(self, harness, tmp_path):
+        ctx = harness.build_context(workspace_dir=str(tmp_path))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute("msMail", {"operation": "download_attachments"}, context=ctx)
+        harness.assert_envelope(result, success=False)
+        assert "message_id" in result["error"].lower()

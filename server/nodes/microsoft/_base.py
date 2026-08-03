@@ -131,6 +131,65 @@ def _format_graph_error(response: httpx.Response) -> str:
     return f"Microsoft Graph request failed with HTTP {response.status_code}"
 
 
+def write_attachment_bytes(payload, *, ctx, filename, mime_type=None):
+    """Write attachment bytes into the workspace; return ``(FileRef, abs_path)``.
+
+    Mirrors ``services.media.workspace.write_audio``'s proven pattern
+    (workspace_root -> resolve_media -> atomic_write_bytes) but returns a
+    plain ``kind="file"`` :class:`FileRef` rather than an ``AudioRef`` — a PDF
+    is not audio and must never claim ``kind="audio"`` (that asserts an
+    ``inspect_audio`` probe that never ran). Files land under
+    ``<workspace>/attachments/`` with a random-suffixed name so retries and
+    repeated runs never collide or overwrite.
+
+    The absolute path is returned alongside the ref because the downstream
+    ``documentParser`` node consumes a plain path string (``file_path`` /
+    ``input_dir``), not a FileRef.
+
+    Raises:
+        NodeUserError: on empty payload.
+    """
+    import hashlib
+    import mimetypes
+    from uuid import uuid4
+
+    from nodes.filesystem._backend import atomic_write_bytes
+    from services.media.refs import FileRef
+    from services.media.workspace import _slugify, resolve_media, workspace_file_url, workspace_root
+    from services.plugin import NodeUserError
+
+    if not payload:
+        raise NodeUserError("Refusing to write an empty attachment file.")
+
+    root = workspace_root(ctx)
+    node_id = str(getattr(ctx, "node_id", "") or "node")
+    workflow_id = getattr(ctx, "workflow_id", None)
+
+    # Preserve the real extension (documentParser globs on *.pdf); slugify the stem.
+    dot = filename.rfind(".") if filename else -1
+    stem = filename[:dot] if dot > 0 else (filename or "attachment")
+    ext = filename[dot + 1 :].lower() if dot > 0 else ""
+    safe = f"{_slugify(stem)}-{node_id[:8]}-{uuid4().hex[:6]}"
+    name = f"{safe}.{ext}" if ext else safe
+    rel = f"attachments/{name}"
+
+    target = resolve_media(rel, ctx=ctx)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_bytes(target, payload, root_dir=root)
+
+    ref = FileRef(
+        kind="file",
+        path=rel,
+        workflow_id=workflow_id,
+        filename=filename or name,
+        mime_type=mime_type or mimetypes.guess_type(filename or name)[0] or "application/octet-stream",
+        size_bytes=len(payload),
+        sha256=hashlib.sha256(payload).hexdigest(),
+        url=workspace_file_url(workflow_id, rel),
+    )
+    return ref, str(target)
+
+
 async def track_microsoft_usage(
     node_id: str,
     action: str,
