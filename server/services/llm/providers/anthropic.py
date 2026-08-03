@@ -55,7 +55,15 @@ class AnthropicProvider:
         thinking: Optional[ThinkingConfig] = None,
         tools: Optional[List[ToolDef]] = None,
     ) -> LLMResponse:
+        from services.llm.config import anthropic_uses_legacy_sampling
+
         system, api_msgs = self._split_system(messages)
+
+        # Anthropic removed sampling params (temperature/top_p/top_k) AND the
+        # thinking {type:"enabled", budget_tokens:N} shape at the Opus 4.7 /
+        # Sonnet 5 boundary; modern models 400 on both and require adaptive
+        # thinking. Only explicitly-legacy models still take the old surface.
+        legacy = anthropic_uses_legacy_sampling(model)
 
         params: Dict[str, Any] = {
             "model": model,
@@ -67,19 +75,31 @@ class AnthropicProvider:
 
         # Thinking / extended thinking
         if thinking and thinking.enabled:
-            budget = max(1024, int(thinking.budget or 2048))
-            if max_tokens <= budget:
-                params["max_tokens"] = budget + 1024
-            params["thinking"] = {"type": "enabled", "budget_tokens": budget}
-            params["temperature"] = 1  # required by Anthropic when thinking
-        else:
+            if legacy:
+                budget = max(1024, int(thinking.budget or 2048))
+                if max_tokens <= budget:
+                    params["max_tokens"] = budget + 1024
+                params["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                params["temperature"] = 1  # required by Anthropic when thinking
+            else:
+                # Modern models: adaptive thinking, no sampling params.
+                params["thinking"] = {"type": "adaptive"}
+        elif legacy:
             params["temperature"] = temperature
 
         # Tools
         if tools:
             params["tools"] = [self._to_api_tool(t) for t in tools]
 
-        resp = await self._client.messages.create(**params)
+        # Stream and collect the final message. The SDK raises
+        # "Streaming is required for operations that may take longer than
+        # 10 minutes" on non-streaming create() calls whose max_tokens is
+        # large enough to risk the idle-connection timeout (current models
+        # reach a 128K output ceiling). Streaming + get_final_message()
+        # returns the same Message shape _normalize consumes and is safe at
+        # every max_tokens. See anthropic-sdk-python#long-requests.
+        async with self._client.messages.stream(**params) as stream:
+            resp = await stream.get_final_message()
         return self._normalize(resp, model)
 
     # ------------------------------------------------------------------

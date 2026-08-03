@@ -176,6 +176,27 @@ def curated_models(provider: str) -> list:
     return [m for m in max_tokens_map if m != "_default"]
 
 
+def anthropic_uses_legacy_sampling(model: str) -> bool:
+    """Whether an Anthropic ``model`` still accepts sampling params + budget thinking.
+
+    Anthropic removed ``temperature``/``top_p``/``top_k`` AND the
+    ``thinking: {type: "enabled", budget_tokens: N}`` shape starting at
+    Opus 4.7 / Sonnet 5 — modern models (opus-5, opus-4-8, opus-4-7,
+    sonnet-5, fable-5, mythos-5) return a 400 on those params and require
+    adaptive thinking instead. The still-accepting prefixes are declared in
+    ``llm_defaults.json`` (``anthropic.legacy_sampling_prefixes``). Anything
+    not listed — including future models — defaults to the modern contract,
+    which is the correct forward direction.
+    """
+    prefixes = (
+        LLM_DEFAULTS.get("providers", {})
+        .get("anthropic", {})
+        .get("legacy_sampling_prefixes", [])
+    )
+    model_lower = model.lower()
+    return any(model_lower.startswith(p) for p in prefixes)
+
+
 def supports_model_listing(provider: str) -> bool:
     """Whether ``provider`` exposes an OpenAI-style model-list endpoint.
 
