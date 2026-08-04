@@ -392,6 +392,23 @@ class TestMsMailReceive:
         assert q["$filter"] == "isRead eq false"
         assert _list_path({}) == "/me/mailFolders/inbox/messages"
 
+    def test_query_with_filter_omits_orderby(self):
+        # Graph rejects $filter (isRead/from) + $orderby (receivedDateTime)
+        # with 400 InefficientFilter. When a filter is present, no $orderby.
+        from nodes.microsoft.mail_receive import _query
+
+        q = _query({"only_unread": True})
+        assert "$orderby" not in q
+        q2 = _query({"only_unread": True, "from_filter": "jane@contoso.com"})
+        assert "$orderby" not in q2
+
+    def test_query_without_filter_keeps_orderby(self):
+        from nodes.microsoft.mail_receive import _query
+
+        q = _query({"only_unread": False})
+        assert "$filter" not in q
+        assert q["$orderby"] == "receivedDateTime desc"
+
     def test_query_from_filter_and_folder(self):
         from nodes.microsoft.mail_receive import _list_path, _query
 

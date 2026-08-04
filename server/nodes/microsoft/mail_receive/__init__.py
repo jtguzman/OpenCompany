@@ -105,10 +105,16 @@ def _query(params: Dict[str, Any]) -> Dict[str, Any]:
     q: Dict[str, Any] = {
         "$select": _SELECT,
         "$top": 25,
-        "$orderby": "receivedDateTime desc",
     }
     if filters:
+        # Graph rejects ($filter on isRead/from) + ($orderby on a DIFFERENT
+        # property, receivedDateTime) with 400 InefficientFilter unless the
+        # advanced-query header is set. The trigger dedups by seen-ids and
+        # doesn't depend on ordering, so we simply drop $orderby whenever a
+        # filter is present. Without a filter we keep newest-first ordering.
         q["$filter"] = " and ".join(filters)
+    else:
+        q["$orderby"] = "receivedDateTime desc"
     return q
 
 
