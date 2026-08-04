@@ -29,6 +29,26 @@ logger = get_logger(__name__)
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
 
+def mailbox_base(mailbox: Optional[str] = None) -> str:
+    """Return the Graph path prefix for the target mailbox.
+
+    Empty / None -> ``/me`` (the signed-in user's own mailbox, unchanged
+    behaviour). A shared/other mailbox address -> ``/users/{address}``.
+
+    Accessing another mailbox over the delegated flow requires the caller
+    to have been granted Full Access (and Send As, to send) on it, plus the
+    ``.Shared`` OAuth scopes (Mail.ReadWrite.Shared / Mail.Send.Shared /
+    Calendars.ReadWrite.Shared) — see microsoft_apis.json.
+    """
+    addr = (mailbox or "").strip()
+    if not addr:
+        return "/me"
+    # Guard against a path-breaking value; the address becomes a URL segment.
+    if "/" in addr or " " in addr:
+        raise NodeUserError(f"Invalid mailbox address: {addr!r}")
+    return f"/users/{addr}"
+
+
 async def graph_request(
     ctx,
     method: str,
@@ -106,10 +126,13 @@ async def graph_get_raw(
         return {}
 
 
-async def mark_message_read_raw(message_id: str, *, user_id: str = "owner") -> None:
-    """PATCH a message's ``isRead`` flag to true (ctx-free; best-effort caller)."""
+async def mark_message_read_raw(message_id: str, *, mailbox: Optional[str] = None, user_id: str = "owner") -> None:
+    """PATCH a message's ``isRead`` flag to true (ctx-free; best-effort caller).
+
+    ``mailbox`` targets a shared/other mailbox (``/users/{addr}``); empty = ``/me``.
+    """
     token = await ensure_fresh_microsoft_token(user_id)
-    url = f"{GRAPH_BASE_URL}/me/messages/{message_id}"
+    url = f"{GRAPH_BASE_URL}{mailbox_base(mailbox)}/messages/{message_id}"
     async with httpx.AsyncClient(timeout=30.0) as client:
         await client.patch(url, json={"isRead": True}, headers={"Authorization": f"Bearer {token}"})
 

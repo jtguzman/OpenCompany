@@ -30,10 +30,13 @@
     ],
     "mail": [
       "Mail.Send",
-      "Mail.ReadWrite"
+      "Mail.ReadWrite",
+      "Mail.ReadWrite.Shared",
+      "Mail.Send.Shared"
     ],
     "calendar": [
-      "Calendars.ReadWrite"
+      "Calendars.ReadWrite",
+      "Calendars.ReadWrite.Shared"
     ]
   },
 

@@ -668,3 +668,86 @@ class TestMsMailDownloadAttachments:
             result = await harness.execute("msMail", {"operation": "download_attachments"}, context=ctx)
         harness.assert_envelope(result, success=False)
         assert "message_id" in result["error"].lower()
+
+
+# ============================================================================
+# Shared mailbox (/users/{address}) routing
+# ============================================================================
+
+SHARED = "support@contoso.com"
+
+
+class TestMailboxBaseHelper:
+    def test_empty_is_me(self):
+        from nodes.microsoft._base import mailbox_base
+
+        assert mailbox_base("") == "/me"
+        assert mailbox_base(None) == "/me"
+
+    def test_address_is_users_path(self):
+        from nodes.microsoft._base import mailbox_base
+
+        assert mailbox_base(SHARED) == f"/users/{SHARED}"
+        assert mailbox_base("  x@y.com  ") == "/users/x@y.com"
+
+    def test_invalid_address_raises(self):
+        from nodes.microsoft._base import mailbox_base
+        from services.plugin import NodeUserError
+
+        for bad in ("a/b", "has space"):
+            with pytest.raises(NodeUserError):
+                mailbox_base(bad)
+
+
+class TestMsMailSharedMailbox:
+    @respx.mock
+    async def test_read_list_targets_shared_mailbox(self, harness):
+        route = respx.get(f"{GRAPH}/users/{SHARED}/messages").mock(
+            return_value=httpx.Response(200, json={"value": []})
+        )
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute("msMail", {"operation": "read", "mailbox": SHARED})
+        harness.assert_envelope(result, success=True)
+        assert route.called
+
+    @respx.mock
+    async def test_send_from_shared_mailbox(self, harness):
+        route = respx.post(f"{GRAPH}/users/{SHARED}/sendMail").mock(return_value=httpx.Response(202))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msMail",
+                {"operation": "send", "mailbox": SHARED, "to": "a@contoso.com", "subject": "s", "body": "b"},
+            )
+        harness.assert_envelope(result, success=True)
+        assert route.called
+
+    @respx.mock
+    async def test_empty_mailbox_still_uses_me(self, harness):
+        route = respx.get(f"{GRAPH}/me/messages").mock(return_value=httpx.Response(200, json={"value": []}))
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute("msMail", {"operation": "read"})
+        harness.assert_envelope(result, success=True)
+        assert route.called
+
+
+class TestMsMailReceiveSharedMailbox:
+    def test_list_path_shared(self):
+        from nodes.microsoft.mail_receive import _list_path
+
+        assert _list_path({"mailbox": SHARED, "folder": "inbox"}) == f"/users/{SHARED}/mailFolders/inbox/messages"
+        assert _list_path({"folder": "inbox"}) == "/me/mailFolders/inbox/messages"
+
+
+class TestMsCalendarSharedMailbox:
+    @respx.mock
+    async def test_list_targets_shared_calendar(self, harness):
+        route = respx.get(f"{GRAPH}/users/{SHARED}/calendarView").mock(
+            return_value=httpx.Response(200, json={"value": []})
+        )
+        with _no_refresh(), patched_container(auth_oauth_tokens=_OWNER_TOKENS), patched_pricing():
+            result = await harness.execute(
+                "msCalendar",
+                {"operation": "list", "mailbox": SHARED, "start_date": "2026-08-01T00:00:00", "end_date": "2026-08-31T00:00:00"},
+            )
+        harness.assert_envelope(result, success=True)
+        assert route.called
