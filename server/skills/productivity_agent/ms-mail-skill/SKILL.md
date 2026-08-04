@@ -1,17 +1,17 @@
 ---
 name: ms-mail-skill
-description: Send, read, search, and reply to Outlook email via Microsoft Graph. Supports composing messages, listing recent mail, searching by text, and replying/reply-all.
+description: Send, read, search, reply to, and handle attachments of Outlook email via Microsoft Graph. Compose messages, list recent mail, search by text, reply/reply-all, and list or download file attachments (e.g. PDFs) for parsing.
 allowed-tools: "ms_mail"
 metadata:
   author: opencompany
-  version: "1.0"
+  version: "1.1"
   category: productivity
 
 ---
 
 # Outlook Mail Skill
 
-Send, read, search, and reply to email using the Microsoft Graph API (Outlook / Microsoft 365).
+Send, read, search, reply to, and handle attachments of email using the Microsoft Graph API (Outlook / Microsoft 365).
 
 ## Tool: ms_mail
 
@@ -25,6 +25,11 @@ Consolidated Outlook Mail tool with an `operation` parameter.
 | `read` | Read a message by ID, or list recent mail when no ID is given | (message_id optional) |
 | `search` | Search messages by text | query |
 | `reply` | Reply to a message | reply_message_id, comment |
+| `list_attachments` | List a message's attachments (metadata only, no download) | message_id |
+| `download_attachments` | Download file attachments into the workspace | message_id |
+
+Every `read`/`search` result includes a `has_attachments` boolean per message —
+check it before calling `list_attachments` / `download_attachments`.
 
 ### send - Send an email
 
@@ -67,6 +72,9 @@ Consolidated Outlook Mail tool with an `operation` parameter.
 | operation | string | Yes | Must be `"read"` |
 | message_id | string | No | Message ID to fetch (with body). Omit to list recent messages. |
 | max_results | integer | No | Max messages when listing (default: 10, max: 100) |
+
+Each returned message includes `has_attachments` (boolean). When `true`, use
+`list_attachments` / `download_attachments` with that `message_id`.
 
 **Example - Read a specific message:**
 ```json
@@ -124,11 +132,83 @@ use Gmail-style operators.
 }
 ```
 
+### list_attachments - List a message's attachments (metadata only)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| operation | string | Yes | Must be `"list_attachments"` |
+| message_id | string | Yes | The message whose attachments to list |
+| include_inline | boolean | No | Include inline body images (e.g. signature logos). Default false. |
+
+Returns `attachments: [{attachment_id, name, content_type, size, is_inline, kind}]`
+and `count`. `kind` is `"file"` for a downloadable file attachment; other values
+(`itemAttachment`, `referenceAttachment`) are shown so you know they cannot be
+downloaded as bytes. Inline images are excluded unless `include_inline: true`.
+This op does NOT download bytes — it is a cheap metadata lookup.
+
+**Example:**
+```json
+{
+  "operation": "list_attachments",
+  "message_id": "AAMkAGI2..."
+}
+```
+
+### download_attachments - Download file attachments into the workspace
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| operation | string | Yes | Must be `"download_attachments"` |
+| message_id | string | Yes | The message whose attachments to download |
+| attachment_id | string | No | Download only this attachment. Omit to download all file attachments. |
+| include_inline | boolean | No | Include inline body images. Default false. |
+
+Saves each file attachment into the workflow workspace and returns:
+- `attachments: [{filename, path, mime_type, size, ref}]` — `path` is the absolute
+  file path on disk (feed it to the Document Parser's `file_path`).
+- `download_dir` — the absolute directory the files landed in (feed it to the
+  Document Parser's `input_dir` to parse all of them).
+- `count`, and `skipped: [{name, reason}]` for anything not downloaded
+  (inline images, item/reference attachments, or files over the size limit).
+
+Only real file attachments are downloaded. Item/reference attachments and (by
+default) inline images are skipped. Bytes are never returned inline — you get a
+path/reference, not the file contents.
+
+**Example - download all file attachments:**
+```json
+{
+  "operation": "download_attachments",
+  "message_id": "AAMkAGI2..."
+}
+```
+
+**Example - download one specific attachment:**
+```json
+{
+  "operation": "download_attachments",
+  "message_id": "AAMkAGI2...",
+  "attachment_id": "AAMkAGI2...=="
+}
+```
+
+## Parsing an attachment (e.g. a PDF)
+
+`ms_mail` downloads the file; it does NOT extract text. To read a PDF's contents,
+pair it with the **Document Parser** node on the canvas:
+
+1. `ms_mail` `download_attachments` → returns `download_dir` (and per-file `path`).
+2. Document Parser with `input_dir = {{msMail.download_dir}}` and
+   `file_pattern = *.pdf` (or `file_path = {{msMail.attachments[0].path}}` for one file).
+3. Document Parser returns `documents[].content` — the extracted text.
+
 ## Common Workflows
 
 1. **Triage recent mail**: `read` with no ID to list recent messages, then `read` a specific `message_id` for full content.
 2. **Find a thread**: `search` by keyword, take the `message_id`, then `reply`.
 3. **Send an update**: `send` to one or more recipients, optionally as HTML.
+4. **Process an attachment**: on a message with `has_attachments: true`, call
+   `download_attachments`, then run the Document Parser over `download_dir` to get the text.
 
 ## Setup Requirements
 
