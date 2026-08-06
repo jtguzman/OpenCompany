@@ -1386,8 +1386,20 @@ async def refresh_agent_tools(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 @activity.defn(name="agent.skill.invoke")
 async def invoke_agent_skill(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Retry-safe, history-recorded progressive skill invocation."""
-    from services.skill_runtime import execute_skill_tool
+    """Retry-safe, history-recorded progressive skill invocation.
+
+    A ``SkillRuntimeError`` (unknown resource, resource-before-load, bad
+    action, etc.) is a *model* error, not a transient one: it will never
+    succeed on retry. Returning it as a normal tool result — instead of
+    letting it propagate and become a Temporal activity retry — lets the
+    agent loop hand the error back to the LLM, which self-corrects on the
+    next turn. Left unhandled, an LLM that hallucinates a resource path
+    (e.g. ``references/instructions.md``) would pin the activity in a
+    retry loop until the attempt budget is exhausted, stalling the whole
+    workflow. The result includes the skill's REAL resource manifest so
+    the model stops guessing filenames.
+    """
+    from services.skill_runtime import SkillRuntimeError, execute_skill_tool
 
     node_data = dict(payload.get("node_data") or {})
     descriptors = node_data.pop("skill_descriptors", [])
@@ -1396,22 +1408,45 @@ async def invoke_agent_skill(payload: Dict[str, Any]) -> Dict[str, Any]:
         for key in ("action", "skill_name", "path", "query", "cursor", "limit")
         if key in node_data
     }
-    return await execute_skill_tool(
-        action_args,
-        {
-            "parameters": {"skill_descriptors": descriptors, "agent_node_id": payload.get("parent_node_id")},
-            "workflow_id": payload.get("workflow_id"),
-            "execution_id": payload.get("execution_id"),
-            "root_execution_id": payload.get("root_execution_id"),
-            "parent_node_id": payload.get("parent_node_id"),
-            # New histories carry the provider call id. The Temporal activity
-            # id is a stable fallback for pre-marker histories and remains
-            # identical across activity retries.
-            "tool_call_id": payload.get("tool_call_id") or activity.info().activity_id,
-            "provider": payload.get("provider"),
-            "skill_invocation_source": "temporal",
-        },
-    )
+    config = {
+        "parameters": {"skill_descriptors": descriptors, "agent_node_id": payload.get("parent_node_id")},
+        "workflow_id": payload.get("workflow_id"),
+        "execution_id": payload.get("execution_id"),
+        "root_execution_id": payload.get("root_execution_id"),
+        "parent_node_id": payload.get("parent_node_id"),
+        # New histories carry the provider call id. The Temporal activity
+        # id is a stable fallback for pre-marker histories and remains
+        # identical across activity retries.
+        "tool_call_id": payload.get("tool_call_id") or activity.info().activity_id,
+        "provider": payload.get("provider"),
+        "skill_invocation_source": "temporal",
+    }
+    try:
+        return await execute_skill_tool(action_args, config)
+    except SkillRuntimeError as exc:
+        # Best-effort: surface the skill's actual resources so the model
+        # stops inventing filenames. Never let this recovery path raise.
+        available: List[Dict[str, Any]] = []
+        try:
+            from services.skill_runtime import _load_authoritative, _manifest, _resolve
+
+            _instr, skill = _load_authoritative(_resolve(config, str(action_args.get("skill_name") or "")))
+            available = _manifest(skill)
+        except Exception:  # noqa: BLE001 -- manifest is advisory only
+            available = []
+        return {
+            "error": str(exc),
+            "error_code": getattr(exc, "code", "SKILL_RUNTIME_ERROR"),
+            "skill_name": action_args.get("skill_name"),
+            "requested_path": action_args.get("path"),
+            "available_resources": available,
+            "hint": (
+                "This is not a transient error and will not change on retry. "
+                "Do not request this path again. Most skills have NO resource "
+                "files — their full content is in the skill instructions you "
+                "already loaded. Only read a path listed in available_resources."
+            ),
+        }
 
 
 @activity.defn(name="agent.skill.clear")
