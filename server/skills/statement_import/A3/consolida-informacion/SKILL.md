@@ -105,9 +105,21 @@ Banchile no publica identificador (separa por el literal "Serie"). Sin match →
 Segunda barrera tras el hash de A1. Modelos: `kardex.import.log` (header) y `kardex.import.line`
 (operaciones vía `log_id`); no existe `kardex.import`. `kardex.import.log.name` es "..." — clave
 natural `(custodian_id, account, kardex_period)`.
-1. Por línea emparejada, busca en `kardex.import.line` `search_read` movimientos con mismo cliente,
-   cuenta, instrumento, fecha valor y cantidad. Coincidencia exacta → `duplicado_confirmado`,
-   exclúyela, registra el id existente.
+
+**Campos EXACTOS para el search (no los inventes — el header NO tiene `partner_id` ni `client_id`):**
+- `kardex.import.log`: `custodian_id` (m2o res.partner, es el custodio), `account` (char),
+  `kardex_period` (char "YYYY/MM"), `state`. NO existen `partner_id`/`client_id`/`nro_documento`.
+- `kardex.import.line`: `log_id` (m2o al header), `financial_instrument_id`, `operation_date`,
+  `movement_type`, `quantity`, `unit_price`.
+
+1. Localiza primero el header del slot: `kardex.import.log` `search_read`
+   `domain=[["custodian_id","=",<id>],["account","=",<acc>],["kardex_period","=","<YYYY/MM>"]]`,
+   `fields=["id","state"]`. Sin header → no hay duplicado, termina el paso. Con header, toma su `id`
+   y busca sus líneas: `kardex.import.line` `search_read`
+   `domain=[["log_id","=",<log_id>]]`, `fields=["financial_instrument_id","operation_date","movement_type","quantity","unit_price"]`.
+2. Cruza cada línea emparejada de la cartola contra esas líneas por
+   `(financial_instrument_id, operation_date, movement_type, quantity)`. Coincidencia →
+   `duplicado_confirmado`, exclúyela, registra el id de la `kardex.import.line` existente.
 2. Consolidada (Ameris): verifica si otra sesión del período ya cargó ese instrumento desde el
    custodio tercero. No asumas la fuente de verdad — sin poder determinarla, pendiente `otro` con
    ambas fuentes; no cargues ninguna. Corrección legítima del custodio (mismo mov, montos
