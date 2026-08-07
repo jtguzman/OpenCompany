@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propuesta Comercial — {{TITULO_PROYECTO}}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
+
+    @page { size: letter; margin: 2cm; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #0D1118;
+      background: #F5F5F2;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* Page container with margins for all content except cover */
+    .page-content {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 40px 60px;
+      background: #fff;
+    }
+
+    @media screen and (min-width: 1024px) {
+      .page-content { width: 80%; }
+    }
+
+    @media screen and (max-width: 1023px) {
+      .page-content { width: 100%; }
+    }
+
+    .page-content img,
+    .section img,
+    .subsection img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      cursor: zoom-in;
+      transition: transform 0.2s;
+    }
+
+    /* Image zoom modal */
+    .img-zoom-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 9999;
+      cursor: zoom-out;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .img-zoom-modal.active { display: flex; }
+
+    .img-zoom-modal img {
+      max-width: 95%;
+      max-height: 95%;
+      object-fit: contain;
+      cursor: zoom-out;
+    }
+
+    .img-zoom-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10000;
+    }
+
+    .img-zoom-close:hover { opacity: 0.7; }
+
+    /* Cover Page */
+    .cover-page {
+      height: 100%;
+      max-height: 10.5in;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(135deg, #0D1118 0%, #1a2332 100%);
+      color: #F5F5F2;
+      page-break-after: always;
+      padding: 80px 60px;
+      box-sizing: border-box;
+    }
+
+    .cover-logo-container { margin-bottom: 60px; }
+
+    .cover-logo-container a {
+      text-decoration: none;
+      transition: opacity 0.3s;
+    }
+
+    .cover-logo-container a:hover { opacity: 0.8; }
+
+    .logo-img {
+      max-width: 280px;
+      height: auto;
+      display: block;
+      filter: brightness(1.1);
+    }
+
+    .cover-page h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 32pt;
+      font-weight: 400;
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .cover-page h2 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 24pt;
+      font-weight: 400;
+      margin-bottom: 32px;
+      line-height: 1.2;
+    }
+
+    .cover-client { font-size: 16pt; margin-bottom: 16px; opacity: 0.95; }
+    .cover-date { font-size: 11pt; opacity: 0.8; }
+    .cover-ref { font-size: 10pt; opacity: 0.7; margin-top: 8px; }
+    .cover-website { margin-top: 32px; font-size: 12pt; }
+
+    .cover-website a {
+      color: #00C896;
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 2px solid #00C896;
+      padding-bottom: 2px;
+      transition: all 0.3s;
+    }
+
+    .cover-website a:hover { color: #F5F5F2; border-bottom-color: #F5F5F2; }
+
+    /* Sections */
+    .section {
+      page-break-inside: avoid;
+      margin-bottom: 40px;
+      padding-top: 20px;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 20pt;
+      font-weight: 400;
+      color: #0D1118;
+      border-bottom: 3px solid #00C896;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .section-intro {
+      font-style: italic;
+      color: #5a6c7d;
+      margin-bottom: 20px;
+    }
+
+    .subsection { margin-bottom: 24px; }
+
+    .subsection h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 14pt;
+      font-weight: 400;
+      color: #0D1118;
+      margin-bottom: 12px;
+    }
+
+    p { margin-bottom: 12px; text-align: justify; }
+    ul, ol { margin-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+
+    /* Scope Grid */
+    .scope-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 24px 0;
+    }
+
+    .scope-in, .scope-out { padding: 20px; border-radius: 8px; }
+
+    .scope-in { background: #E6FAF4; border-left: 4px solid #00C896; }
+    .scope-out { background: #F5F5F2; border-left: 4px solid rgba(13, 17, 24, 0.3); }
+
+    .scope-in h3, .scope-out h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 13pt;
+      font-weight: 400;
+      margin-bottom: 12px;
+    }
+
+    /* Methodology Phases */
+    .methodology-phases { margin: 24px 0; }
+
+    .phase {
+      background: #F5F5F2;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .phase-1 { border-left: 5px solid #00C896; }
+    .phase-2 { border-left: 5px solid #0D1118; }
+    .phase-3 { border-left: 5px solid #5a6c7d; }
+    .phase-4 { border-left: 5px solid #00a078; }
+
+    .placeholder {
+      color: #b45309;
+      font-style: italic;
+      background: #FFF7E6;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Listas de requerimientos dentro de tablas */
+    .req-list {
+      margin: 0 0 0 16px;
+      padding: 0;
+    }
+
+    .req-list li {
+      margin-bottom: 4px;
+      padding-left: 2px;
+    }
+
+    .req-list li:last-child { margin-bottom: 0; }
+
+    .phase h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 15pt;
+      font-weight: 400;
+      color: #0D1118;
+      margin-bottom: 16px;
+    }
+
+    .phase-details {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #dee2e6;
+    }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    thead { background: #0D1118; color: #F5F5F2; }
+    th { text-align: left; padding: 12px; font-weight: 600; font-size: 10pt; }
+    td { padding: 10px 12px; border-bottom: 1px solid rgba(13, 17, 24, 0.1); }
+    .total-row { background: #E6FAF4; font-weight: 700; }
+    .price-cell { text-align: right; font-weight: 600; color: #00C896; }
+
+    /* Timeline */
+    .timeline { margin: 20px 0; }
+
+    .milestone-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #F5F5F2;
+      border-radius: 6px;
+    }
+
+    .milestone-number {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      background: #00C896;
+      color: #0D1118;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .milestone-content { flex: 1; }
+    .milestone-desc { color: #5a6c7d; }
+
+    /* CTA */
+    .cta-section {
+      text-align: center;
+      padding: 40px;
+      background: #0D1118;
+      color: #F5F5F2;
+      border-radius: 12px;
+      margin: 40px 0;
+      page-break-inside: avoid;
+    }
+
+    .cta-section h2 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 22pt;
+      font-weight: 400;
+      margin-bottom: 16px;
+      color: #00C896;
+    }
+
+    .contact-info { margin-top: 20px; font-size: 11pt; opacity: 0.95; }
+
+    /* Acceptance Section */
+    .acceptance-section {
+      text-align: center;
+      padding: 40px;
+      background: #F5F5F2;
+      border-radius: 12px;
+      margin: 40px 0;
+      page-break-inside: avoid;
+    }
+
+    .acceptance-text {
+      font-size: 12pt;
+      color: #0D1118;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .btn-accept {
+      display: inline-block;
+      background: #00C896;
+      color: #0D1118;
+      padding: 16px 48px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14pt;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(0, 200, 150, 0.3);
+    }
+
+    .btn-accept:hover {
+      background: #00a078;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 200, 150, 0.4);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      font-size: 9pt;
+      color: #6c757d;
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #dee2e6;
+    }
+
+    /* Lists */
+    .benefits-list { list-style: none; margin-left: 0; }
+
+    .benefits-list li {
+      padding: 12px 16px;
+      background: #E6FAF4;
+      border-left: 4px solid #00C896;
+      margin-bottom: 12px;
+      border-radius: 4px;
+    }
+
+    .pain-points-list { list-style: none; margin-left: 0; }
+
+    .pain-points-list li {
+      padding: 12px 16px;
+      background: #F5F5F2;
+      border-left: 4px solid rgba(13, 17, 24, 0.3);
+      margin-bottom: 12px;
+      border-radius: 4px;
+    }
+
+    /* Value Prop Box */
+    .value-prop-box {
+      background: #E6FAF4;
+      border-left: 4px solid #00C896;
+      padding: 20px;
+      margin: 24px 0;
+      border-radius: 4px;
+    }
+
+    .value-prop-box h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 13pt;
+      font-weight: 400;
+      color: #0D1118;
+      margin-bottom: 12px;
+    }
+
+    /* --- Nuevos bloques --- */
+
+    /* Promesa: 3 tarjetas numeradas */
+    .promise-grid { margin: 24px 0; }
+
+    .promise-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      background: #E6FAF4;
+      border-left: 4px solid #00C896;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+
+    .promise-number {
+      flex-shrink: 0;
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 22pt;
+      line-height: 1;
+      color: #00C896;
+    }
+
+    .promise-body h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 13pt;
+      font-weight: 400;
+      margin-bottom: 6px;
+    }
+
+    .promise-body p { margin-bottom: 0; }
+
+    /* Servicios */
+    .service-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .service-card {
+      background: #F5F5F2;
+      border-radius: 8px;
+      padding: 18px 20px;
+      border-top: 3px solid #00C896;
+    }
+
+    .service-card .eyebrow {
+      font-size: 8.5pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #00a078;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .service-card h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 12.5pt;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+
+    .service-card p { font-size: 10pt; text-align: left; margin-bottom: 0; color: #3d4753; }
+
+    /* Experiencia */
+    .case-table td:first-child { width: 26%; font-weight: 600; }
+    .case-table td:last-child { width: 30%; color: #00a078; font-weight: 600; }
+
+    .client-roster {
+      background: #F5F5F2;
+      border-radius: 8px;
+      padding: 18px 20px;
+      font-size: 10pt;
+      color: #3d4753;
+      margin: 20px 0;
+    }
+
+    /* Divisor de Adendo */
+    .adendo-divider {
+      background: #0D1118;
+      color: #F5F5F2;
+      border-radius: 12px;
+      padding: 32px 40px;
+      margin: 56px 0 32px;
+      page-break-before: always;
+      page-break-inside: avoid;
+    }
+
+    .adendo-divider h2 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 22pt;
+      font-weight: 400;
+      color: #00C896;
+      margin-bottom: 10px;
+    }
+
+    .adendo-divider p { opacity: 0.9; margin-bottom: 0; }
+
+    .note-box {
+      background: #F5F5F2;
+      border-left: 4px solid rgba(13, 17, 24, 0.3);
+      padding: 16px 20px;
+      border-radius: 4px;
+      margin: 20px 0;
+      font-size: 10pt;
+    }
+
+    @media screen and (max-width: 700px) {
+      .scope-grid, .service-grid { grid-template-columns: 1fr; }
+      .page-content { padding: 24px 20px; }
+    }
+
+    /* Print */
+    @media print {
+      @page { size: letter; margin: 0; }
+
+      body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+        margin: 0;
+        padding: 0;
+      }
+
+      .cover-page {
+        height: 11in;
+        max-height: 11in;
+        min-height: 0;
+        page-break-after: always;
+        page-break-inside: avoid;
+        margin: 0;
+        padding: 60px 40px;
+      }
+
+      .page-content { padding: 20mm 25mm; max-width: none; }
+      .section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       PLANTILLA — PROPUESTA COMERCIAL ADDVAL CONNECT
+       Modelo: EJECUCIÓN SECUENCIAL POR HITOS (modelo por defecto)
+       Reemplace todos los marcadores de doble llave. Elimine los bloques opcionales
+       marcados con <!-- OPCIONAL --> si no aplican.
+       No modifique el CSS del <head>.
+       ============================================================ -->
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div class="cover-logo-container">
+      <a href="https://connect.addval.cl" target="_blank" style="display: inline-block;">
+        <img src="https://connect.addval.cl/assets/addval-logo-Df4dGJBf.png" alt="Addval Connect" class="logo-img">
+      </a>
+    </div>
+    <h1>Propuesta Comercial</h1>
+    <h2>{{TITULO_PROYECTO}}</h2>
+    <div class="cover-client">{{CLIENTE}}</div>
+    <div class="cover-date">{{FECHA_EMISION}}</div>
+    <div class="cover-ref">Propuesta N° {{NUMERO_PROPUESTA}}</div>
+    <div class="cover-website">
+      <a href="https://connect.addval.cl" target="_blank">connect.addval.cl</a>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+  <!-- 1. ENTENDIMIENTO DEL CLIENTE -->
+  <div class="section">
+    <h2 class="section-title">1. Entendimiento del Cliente</h2>
+    <p>{{CONTEXTO_PARRAFO_1}}</p>
+    <p>{{CONTEXTO_PARRAFO_2}}</p>
+
+    <ul class="pain-points-list">
+      <li><strong>{{DOLOR_1_TITULO}}:</strong> {{DOLOR_1_DESC}}</li>
+      <li><strong>{{DOLOR_2_TITULO}}:</strong> {{DOLOR_2_DESC}}</li>
+      <li><strong>{{DOLOR_3_TITULO}}:</strong> {{DOLOR_3_DESC}}</li>
+      <li><strong>{{DOLOR_4_TITULO}}:</strong> {{DOLOR_4_DESC}}</li>
+    </ul>
+
+    <div class="value-prop-box">
+      <h3>Lo que proponemos</h3>
+      <p>{{QUE_PROPONEMOS_PARRAFO_1}}</p>
+      <p>{{QUE_PROPONEMOS_PARRAFO_2}}</p>
+    </div>
+  </div>
+
+  <!-- 2. ADDVAL CONNECT — BLOQUE FIJO: no reescribir, solo ajustar la última línea -->
+  <div class="section">
+    <h2 class="section-title">2. Addval Connect</h2>
+    <p class="section-intro">Aumentamos tu productividad con tecnología e IA.</p>
+    <p>Simplificamos procesos de alta complejidad organizacional con tecnología simple, sostenible y escalable. Partimos por ordenar el proceso y recién después incorporamos tecnología: la tecnología amplifica lo que ya existe, y si el proceso está desordenado, amplifica el desorden.</p>
+
+    <div class="service-grid">
+      <div class="service-card">
+        <span class="eyebrow">Etapa central de valor</span>
+        <h3>Consultoría de Procesos y Digitalización</h3>
+        <p>Levantamos, analizamos y rediseñamos procesos críticos. Diagnóstico de madurez, mapa de procesos, priorización por impacto y hoja de ruta.</p>
+      </div>
+      <div class="service-card">
+        <span class="eyebrow">Odoo y plataformas líderes</span>
+        <h3>Implementación de ERP y Sistemas de Gestión</h3>
+        <p>Implementación, parametrización e integración para ordenar la operación y estandarizar flujos en finanzas, compras, inventario, ventas y producción.</p>
+      </div>
+      <div class="service-card">
+        <span class="eyebrow">Automatización con gobernanza</span>
+        <h3>Agentes de Inteligencia Artificial</h3>
+        <p>Agentes IA para automatizar interacciones, analizar documentos y ejecutar flujos con información contextual, con seguridad y trazabilidad.</p>
+      </div>
+      <div class="service-card">
+        <span class="eyebrow">MVP · fases evolutivas</span>
+        <h3>Desarrollos Personalizados</h3>
+        <p>Aplicaciones, integraciones, portales, workflows y tableros a medida. Alcances mínimos viables y evolución por fases, sin acumular deuda técnica.</p>
+      </div>
+      <div class="service-card">
+        <span class="eyebrow">Decisiones con evidencia</span>
+        <h3>Simulación y Analítica Avanzada</h3>
+        <p>Modelos para simular escenarios operacionales, proyectar demanda, estimar capacidades y evaluar cuellos de botella.</p>
+      </div>
+      <div class="service-card">
+        <span class="eyebrow">Después del Go-Live</span>
+        <h3>Soporte y Evolución</h3>
+        <p>Mesa de soporte con SLA, monitoreo, mejoras continuas e infraestructura gestionada para sostener la solución en el tiempo.</p>
+      </div>
+    </div>
+
+    <p><strong>Este proyecto corresponde a la línea de {{LINEA_DE_SERVICIO}}</strong>{{ENCUADRE_PROYECTO}}.</p>
+  </div>
+
+  <!-- 3. PROMESA DE LA PROPUESTA — solo beneficios para el Cliente. Sin precios, sin pagos, sin metodología. -->
+  <div class="section">
+    <h2 class="section-title">3. Promesa de la Propuesta</h2>
+
+    <div class="promise-grid">
+      <div class="promise-item">
+        <div class="promise-number">01</div>
+        <div class="promise-body">
+          <h3>{{PROMESA_1_TITULO}}</h3>
+          <p>{{PROMESA_1_DESC}}</p>
+        </div>
+      </div>
+
+      <div class="promise-item">
+        <div class="promise-number">02</div>
+        <div class="promise-body">
+          <h3>{{PROMESA_2_TITULO}}</h3>
+          <p>{{PROMESA_2_DESC}}</p>
+        </div>
+      </div>
+
+      <div class="promise-item">
+        <div class="promise-number">03</div>
+        <div class="promise-body">
+          <h3>{{PROMESA_3_TITULO}}</h3>
+          <p>{{PROMESA_3_DESC}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. VALORES DE LA PROPUESTA -->
+  <div class="section">
+    <h2 class="section-title">4. Valores de la Propuesta</h2>
+
+    <table class="pricing-table">
+      <thead>
+        <tr>
+          <th style="width: 62%;">Componente</th>
+          <th style="width: 38%; text-align: right;">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>{{COMPONENTE_1_NOMBRE}}</strong>
+            <br><span style="font-size: 10pt; color: #5a6c7d;">{{COMPONENTE_1_DETALLE}}</span>
+          </td>
+          <td class="price-cell">UF {{COMPONENTE_1_MONTO}}</td>
+        </tr>
+        <tr class="total-row">
+          <td><strong>Inversión total del proyecto</strong></td>
+          <td class="price-cell"><strong>UF {{MONTO_TOTAL}} + IVA</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- OPCIONAL — solo si existe un servicio recurrente. Nunca dentro de la tabla de alcance fijo. -->
+    <h3 style="font-family:'DM Serif Display', Georgia, serif; font-weight:400; font-size:13pt; margin: 28px 0 8px;">Servicio recurrente</h3>
+
+    <table class="pricing-table">
+      <thead>
+        <tr>
+          <th style="width: 62%;">Componente</th>
+          <th style="width: 38%; text-align: right;">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>{{RECURRENTE_NOMBRE}}</strong> <span style="font-size:10pt; color:#5a6c7d;">({{RECURRENTE_VIGENCIA}})</span>
+            <br><span style="font-size: 10pt; color: #5a6c7d;">{{RECURRENTE_DETALLE}}</span>
+          </td>
+          <td class="price-cell">UF {{RECURRENTE_MONTO}}</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- FIN OPCIONAL -->
+
+    <p style="font-size:10pt; color:#5a6c7d;">Todos los valores están expresados en UF y no incluyen IVA.</p>
+  </div>
+
+  <!-- 5. CONDICIONES COMERCIALES -->
+  <div class="section">
+    <h2 class="section-title">5. Condiciones Comerciales</h2>
+
+    <div class="subsection">
+      <h3>Calendario de Pagos</h3>
+      <p>{{INTRO_CALENDARIO_PAGOS}}</p>
+      <table class="payment-schedule-table">
+        <thead>
+          <tr>
+            <th>Hito de facturación</th>
+            <th style="text-align:right;">%</th>
+            <th style="text-align:right;">Monto</th>
+            <th style="text-align:right;">Fecha estimada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{PAGO_1_HITO}}</td>
+            <td style="text-align:right;">{{PAGO_1_PCT}}</td>
+            <td style="text-align:right;">UF {{PAGO_1_MONTO}}</td>
+            <td style="text-align:right;">{{PAGO_1_FECHA}}</td>
+          </tr>
+          <tr>
+            <td>{{PAGO_2_HITO}}</td>
+            <td style="text-align:right;">{{PAGO_2_PCT}}</td>
+            <td style="text-align:right;">UF {{PAGO_2_MONTO}}</td>
+            <td style="text-align:right;">{{PAGO_2_FECHA}}</td>
+          </tr>
+          <tr class="total-row">
+            <td><strong>Total proyecto</strong></td>
+            <td style="text-align:right;"><strong>100%</strong></td>
+            <td style="text-align:right;"><strong>UF {{MONTO_TOTAL}}</strong></td>
+            <td style="text-align:right;">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Términos</h3>
+      <ul>
+        <li><strong>Modalidad:</strong> precio fijo sobre alcance fijo, facturado en {{N_HITOS_FACTURACION}} hitos. No se factura por hora ni por consumo.</li>
+        <li><strong>Moneda:</strong> valores en UF, más IVA. Se factura al valor de la UF del día de emisión.</li>
+        <li><strong>Garantía:</strong> {{DIAS_GARANTIA}} días corridos desde la aceptación formal, sobre {{OBJETO_GARANTIA}}.</li>
+        <li><strong>Control de cambios:</strong> todo requerimiento fuera de {{DOCUMENTO_BASE}} se gestiona mediante addendum a la OT o nueva Orden de Trabajo, con evaluación de impacto en plazo y costo.</li>
+        <li><strong>Condición de inicio:</strong> firma de la Orden de Trabajo y pago del anticipo.</li>
+        <li><strong>Condición de inicio de {{FASE_CONDICIONADA}}:</strong> {{CONDICION_FASE}}.</li>
+        <li><strong>Dependencia de insumos del cliente:</strong> los plazos comprometidos suponen la entrega oportuna de {{INSUMOS_RESUMEN}}. Un atraso en estos insumos desplaza las fechas de los hitos siguientes.</li>
+        <li><strong>Licenciamiento:</strong> {{TERMINO_LICENCIAS}}.</li>
+        <li><strong>Vigencia de esta propuesta:</strong> 30 días corridos desde su emisión.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 6. INFORMACIÓN TÉCNICA DEL SERVICIO -->
+  <div class="section">
+    <h2 class="section-title">6. Información Técnica del Servicio</h2>
+
+    <p>{{RESUMEN_TECNICO}}</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32%;">Componente</th>
+          <th>Definición</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Tipo de solución</strong></td><td>{{FICHA_TIPO_SOLUCION}}</td></tr>
+        <tr><td><strong>Alcance funcional</strong></td><td>{{FICHA_ALCANCE_FUNCIONAL}}</td></tr>
+        <tr><td><strong>{{FICHA_FILA_LIBRE_1_TITULO}}</strong></td><td>{{FICHA_FILA_LIBRE_1_VALOR}}</td></tr>
+        <tr><td><strong>{{FICHA_FILA_LIBRE_2_TITULO}}</strong></td><td>{{FICHA_FILA_LIBRE_2_VALOR}}</td></tr>
+        <tr><td><strong>Metodología</strong></td><td>Ejecución secuencial por hitos, con entregables y criterios de aceptación formales</td></tr>
+        <tr><td><strong>Plazo</strong></td><td>{{FICHA_PLAZO}}</td></tr>
+        <tr><td><strong>Entregables</strong></td><td>{{FICHA_ENTREGABLES}}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="scope-grid">
+      <div class="scope-in">
+        <h3>✓ Incluido</h3>
+        <ul>
+          <li>{{INCLUIDO_1}}</li>
+          <li>{{INCLUIDO_2}}</li>
+          <li>{{INCLUIDO_3}}</li>
+          <li>{{INCLUIDO_4}}</li>
+          <li>{{INCLUIDO_5}}</li>
+          <li>Garantía de {{DIAS_GARANTIA}} días post-aceptación</li>
+        </ul>
+      </div>
+      <div class="scope-out">
+        <h3>✗ No incluido</h3>
+        <ul>
+          <li>{{NO_INCLUIDO_1}}</li>
+          <li>{{NO_INCLUIDO_2}}</li>
+          <li>{{NO_INCLUIDO_3}}</li>
+          <li>{{NO_INCLUIDO_4}}</li>
+          <li>Licencias de terceros</li>
+        </ul>
+      </div>
+    </div>
+
+    <p style="font-size:10pt; color:#5a6c7d;">El detalle completo de metodología, equipo, cronograma, supuestos y prerrequisitos se encuentra en el <strong>Adendo Técnico</strong> al final de este documento.</p>
+  </div>
+
+  <!-- 7. EXPERIENCIA — BLOQUE FIJO: solo ajustar el párrafo introductorio a la industria del Cliente -->
+  <div class="section">
+    <h2 class="section-title">7. Experiencia</h2>
+    <p>{{INTRO_EXPERIENCIA}}</p>
+
+    <table class="case-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Proyecto</th>
+          <th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Altiplano Metals</td>
+          <td>Minería · Sistema contable, control de producción y costos de explotación y planta</td>
+          <td>Control total de costos mineros</td>
+        </tr>
+        <tr>
+          <td>Ecominera</td>
+          <td>Minería · Control de gestión, contabilidad, inventario y costos para prospección</td>
+          <td>Gestión integrada de prospección</td>
+        </tr>
+        <tr>
+          <td>La Pizka</td>
+          <td>Retail · ERP para venta, inventario, producción y contabilidad</td>
+          <td>Operación logística, financiera y comercial digitalizada</td>
+        </tr>
+        <tr>
+          <td>Pessa</td>
+          <td>Manufactura industrial · Implementación integral de Odoo en fabricación, inventario y compras</td>
+          <td>40% menos en tiempos de planificación</td>
+        </tr>
+        <tr>
+          <td>Huentelauquén</td>
+          <td>Agroindustria · Digitalización de campo a comercialización integrada en Odoo</td>
+          <td>Trazabilidad total desde origen a cliente</td>
+        </tr>
+        <tr>
+          <td>BancoEstado</td>
+          <td>Banca · Modelo de gestión para transparentar y controlar gastos de cobranza</td>
+          <td>Costo real del proceso 100% trazable</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="client-roster">
+      <strong>Empresas que confían en nosotros:</strong> Latam Airlines · Enaex · Arauco · ACHS · Falabella · Mallplaza · Corona · Salfa · Inacap · Metrogas · Coca-Cola Embonor · Red de Salud UC Christus · BancoEstado · Cooke Aquaculture · Polpaico · Valle Escondido · Fiordo Austral · AFP Habitat
+    </div>
+
+    <p style="font-size:10pt; color:#5a6c7d;">Addval es miembro de <strong>Russell Bedford International</strong>, red global de firmas independientes de auditoría, contabilidad y consultoría con 350 oficinas en más de 100 países.</p>
+  </div>
+
+  <!-- 8. CONTACTO PARA EL CIERRE -->
+  <div class="section">
+    <h2 class="section-title">8. Contacto para el Cierre</h2>
+    <p>Al aceptar esta propuesta se emite la Orden de Trabajo, se factura el anticipo, se presenta el cronograma detallado y se confirman los responsables de cada insumo del Cliente.</p>
+  </div>
+
+  <div class="cta-section">
+    <h2>{{CTA_TITULAR}}</h2>
+    <p>Cualquier duda sobre alcance, plazos o inversión, conversémosla antes de firmar.</p>
+    <div class="contact-info">
+      <strong>{{CONTACTO_NOMBRE}}</strong><br>
+      {{CONTACTO_CARGO}} — Addval Connect<br>
+      tecnologia@addval.cl<br>
+      Bucarest 150 of. 601, Providencia, Santiago de Chile
+    </div>
+  </div>
+
+  <div class="acceptance-section">
+    <p class="acceptance-text">Para aceptar esta propuesta, presione el botón a continuación y nos pondremos en contacto a la brevedad:</p>
+    <a href="mailto:tecnologia@addval.cl?subject={{ASUNTO_URLENC}}&body={{CUERPO_URLENC}}" class="btn-accept">
+      ✓ Aceptar Propuesta
+    </a>
+  </div>
+
+  <!-- ============ ADENDO TÉCNICO ============ -->
+  <div class="adendo-divider">
+    <h2>Adendo Técnico</h2>
+    <p>Detalle de metodología, alcance, equipo, cronograma, prerrequisitos, supuestos y exclusiones del proyecto <strong>{{TITULO_PROYECTO}}</strong> ({{NUMERO_PROPUESTA}}). Este adendo forma parte integral de la propuesta{{REFERENCIA_DOCUMENTO_BASE}}.</p>
+  </div>
+
+  <!-- A. METODOLOGÍA -->
+  <div class="section">
+    <h2 class="section-title">A. Metodología: Ejecución Secuencial por Hitos</h2>
+    <p>El proyecto tiene <strong>alcance fijo</strong> y se ejecuta en <strong>hitos secuenciales</strong>.</p>
+
+    <div class="methodology-phases">
+      <div class="phase phase-1">
+        <h3>Hito 1 — {{HITO_1_NOMBRE}} · {{HITO_1_PLAZO}}</h3>
+        <p>{{HITO_1_DESC}}</p>
+        <div class="phase-details">
+          <p><strong>Cierre:</strong> {{HITO_1_CIERRE}}</p>
+        </div>
+      </div>
+
+      <div class="phase phase-2">
+        <h3>Hito 2 — {{HITO_2_NOMBRE}} · {{HITO_2_PLAZO}}</h3>
+        <p>{{HITO_2_DESC}}</p>
+        <p><strong>Dinámica:</strong> {{HITO_2_DINAMICA}}</p>
+        <div class="phase-details">
+          <p><strong>Cierre:</strong> {{HITO_2_CIERRE}}</p>
+        </div>
+      </div>
+
+      <div class="phase phase-3">
+        <h3>Hito 3 — {{HITO_3_NOMBRE}} · {{HITO_3_PLAZO}}</h3>
+        <p>{{HITO_3_DESC}}</p>
+        <p><strong>Dinámica:</strong> {{HITO_3_DINAMICA}}</p>
+        <div class="phase-details">
+          <p><strong>Cierre:</strong> {{HITO_3_CIERRE}}</p>
+        </div>
+      </div>
+
+      <div class="phase phase-4">
+        <h3>Hito 4 — {{HITO_4_NOMBRE}} · {{HITO_4_PLAZO}}</h3>
+        <p>{{HITO_4_DESC}}</p>
+        <div class="phase-details">
+          <p><strong>Cierre:</strong> {{HITO_4_CIERRE}}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Control de cambios</h3>
+      <p>El alcance de este proyecto es fijo. Todo requerimiento que surja fuera de {{DOCUMENTO_BASE}} — en particular {{EJEMPLO_CAMBIO_PROBABLE}} — se evalúa en impacto de plazo y costo, y se formaliza mediante <strong>addendum a la Orden de Trabajo</strong> o una nueva OT. Este mecanismo protege la fecha de entrega comprometida y evita que el alcance se expanda sin decisión explícita de ambas partes.</p>
+    </div>
+  </div>
+
+  <!-- B. ALCANCE DETALLADO -->
+  <div class="section">
+    <h2 class="section-title">B. Alcance Detallado</h2>
+    <p>{{INTRO_ALCANCE_DETALLADO}}</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:20%;">Ámbito</th>
+          <th style="width:42%;">Incluido</th>
+          <th style="width:38%;">No incluido</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>{{AMBITO_1}}</strong></td>
+          <td>{{AMBITO_1_IN}}</td>
+          <td>{{AMBITO_1_OUT}}</td>
+        </tr>
+        <tr>
+          <td><strong>{{AMBITO_2}}</strong></td>
+          <td>{{AMBITO_2_IN}}</td>
+          <td>{{AMBITO_2_OUT}}</td>
+        </tr>
+        <tr>
+          <td><strong>{{AMBITO_3}}</strong></td>
+          <td>{{AMBITO_3_IN}}</td>
+          <td>{{AMBITO_3_OUT}}</td>
+        </tr>
+        <tr>
+          <td><strong>Documentación y traspaso</strong></td>
+          <td>{{AMBITO_DOC_IN}}</td>
+          <td>{{AMBITO_DOC_OUT}}</td>
+        </tr>
+        <tr>
+          <td><strong>Post-entrega</strong></td>
+          <td>Garantía de {{DIAS_GARANTIA}} días sobre {{OBJETO_GARANTIA}}.</td>
+          <td>Soporte productivo posterior a la garantía, que se rige por un contrato de soporte independiente.</td>
+        </tr>
+        <tr>
+          <td><strong>Licencias e infraestructura</strong></td>
+          <td>—</td>
+          <td>{{AMBITO_LIC_OUT}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- C. EQUIPO Y CRONOGRAMA -->
+  <div class="section">
+    <h2 class="section-title">C. Equipo y Cronograma</h2>
+
+    <div class="subsection">
+      <h3>Equipo del Proyecto</h3>
+      <table class="team-table">
+        <thead>
+          <tr>
+            <th style="width:34%;">Perfil</th>
+            <th>Responsabilidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>{{PERFIL_1}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{NOMBRE_1}}</span></td>
+            <td>{{RESPONSABILIDAD_1}}</td>
+          </tr>
+          <tr>
+            <td><strong>{{PERFIL_2}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{NOMBRE_2}}</span></td>
+            <td>{{RESPONSABILIDAD_2}}</td>
+          </tr>
+          <tr>
+            <td><strong>{{PERFIL_3}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{NOMBRE_3}}</span></td>
+            <td>{{RESPONSABILIDAD_3}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Cronograma de Hitos</h3>
+      <p><strong>Puesta en producción:</strong> {{FECHA_PRODUCCION}} &nbsp;·&nbsp; <strong>Cierre de garantía:</strong> {{FECHA_CIERRE_GARANTIA}}</p>
+      <p style="font-size:10pt; color:#5a6c7d;">Los {{N_HITOS}} hitos siguientes son hitos de entrega, cada uno con su criterio de aceptación. La facturación se concentra en {{HITOS_FACTURABLES}}.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24%;">Hito</th>
+            <th style="width:42%;">Requerimientos incluidos</th>
+            <th style="width:34%;">Criterio de aceptación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1 · {{CRONO_1_NOMBRE}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{CRONO_1_FECHA}}</span></td>
+            <td>
+              <ul class="req-list">
+                <li>{{CRONO_1_REQ_1}}</li>
+                <li>{{CRONO_1_REQ_2}}</li>
+                <li>{{CRONO_1_REQ_3}}</li>
+              </ul>
+            </td>
+            <td>{{CRONO_1_CRITERIO}}</td>
+          </tr>
+          <tr>
+            <td><strong>2 · {{CRONO_2_NOMBRE}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{CRONO_2_FECHA}}</span></td>
+            <td>
+              <ul class="req-list">
+                <li>{{CRONO_2_REQ_1}}</li>
+                <li>{{CRONO_2_REQ_2}}</li>
+                <li>{{CRONO_2_REQ_3}}</li>
+              </ul>
+            </td>
+            <td>{{CRONO_2_CRITERIO}}</td>
+          </tr>
+          <tr>
+            <td><strong>3 · {{CRONO_3_NOMBRE}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{CRONO_3_FECHA}}</span></td>
+            <td>
+              <ul class="req-list">
+                <li>{{CRONO_3_REQ_1}}</li>
+                <li>{{CRONO_3_REQ_2}}</li>
+                <li>{{CRONO_3_REQ_3}}</li>
+              </ul>
+            </td>
+            <td>{{CRONO_3_CRITERIO}}</td>
+          </tr>
+          <tr>
+            <td><strong>4 · {{CRONO_4_NOMBRE}}</strong><br><span style="font-size:9.5pt; color:#5a6c7d;">{{CRONO_4_FECHA}}</span></td>
+            <td>
+              <ul class="req-list">
+                <li>{{CRONO_4_REQ_1}}</li>
+                <li>{{CRONO_4_REQ_2}}</li>
+                <li>{{CRONO_4_REQ_3}}</li>
+              </ul>
+            </td>
+            <td>{{CRONO_4_CRITERIO}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- D. DEPENDENCIAS Y PRERREQUISITOS -->
+  <div class="section">
+    <h2 class="section-title">D. Dependencias y Prerrequisitos</h2>
+
+    <div class="subsection">
+      <h3>Insumos que debe entregar el Cliente</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36%;">Insumo</th>
+            <th style="width:40%;">Propósito</th>
+            <th style="width:24%;">Requerido antes de</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{INSUMO_1}}</td>
+            <td>{{INSUMO_1_PROPOSITO}}</td>
+            <td>{{INSUMO_1_HITO}}</td>
+          </tr>
+          <tr>
+            <td>{{INSUMO_2}}</td>
+            <td>{{INSUMO_2_PROPOSITO}}</td>
+            <td>{{INSUMO_2_HITO}}</td>
+          </tr>
+          <tr>
+            <td>{{INSUMO_3}}</td>
+            <td>{{INSUMO_3_PROPOSITO}}</td>
+            <td>{{INSUMO_3_HITO}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Dependencias Críticas del Cliente</h3>
+      <ul>
+        <li>{{DEPENDENCIA_1}}</li>
+        <li>{{DEPENDENCIA_2}}</li>
+        <li>Aprobación formal de {{ENTREGABLE_APROBABLE}} dentro de los 5 días hábiles desde su entrega, como condición para iniciar {{FASE_CONDICIONADA}}</li>
+        <li>Respuesta a consultas funcionales en un plazo máximo de 2 días hábiles, para no generar bloqueos</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <h3>Prerrequisitos Operativos</h3>
+      <ul>
+        <li>{{PRERREQUISITO_1}}</li>
+        <li>{{PRERREQUISITO_2}}</li>
+        <li>{{PRERREQUISITO_3}}</li>
+        <li>Firma de la Orden de Trabajo y pago del anticipo como condición de arranque</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- E. SUPUESTOS Y EXCLUSIONES -->
+  <div class="section">
+    <h2 class="section-title">E. Supuestos y Exclusiones</h2>
+
+    <div class="subsection">
+      <h3>Supuestos del Proyecto</h3>
+      <ul>
+        <li>{{SUPUESTO_1}}</li>
+        <li>{{SUPUESTO_2}}</li>
+        <li>{{SUPUESTO_3}}</li>
+        <li>Los plazos suponen la entrega oportuna de los insumos del Cliente. Un atraso desplaza las fechas de los hitos posteriores sin modificar el precio</li>
+        <li>El período de garantía de {{DIAS_GARANTIA}} días cubre defectos sobre lo definido en {{DOCUMENTO_BASE}}</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <h3>Exclusiones</h3>
+      <ul>
+        <li>{{EXCLUSION_1}}</li>
+        <li>{{EXCLUSION_2}}</li>
+        <li>{{EXCLUSION_3}}</li>
+        <li>Todo desarrollo o configuración no descrito en {{DOCUMENTO_BASE}}</li>
+        <li>Licencias, hosting y administración de ambientes</li>
+        <li>Soporte productivo posterior al período de garantía</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    Propuesta generada el {{FECHA_EMISION}} • Addval Connect SpA
+  </div>
+  </div><!-- end page-content -->
+
+  <!-- Image Zoom Modal -->
+  <div id="img-zoom-modal" class="img-zoom-modal" onclick="closeImageZoom()">
+    <span class="img-zoom-close" onclick="closeImageZoom()">&times;</span>
+    <img id="img-zoom-content" src="" alt="Zoom">
+  </div>
+
+  <script>
+    (function() {
+      const images = document.querySelectorAll('.page-content img, .section img, .subsection img');
+      images.forEach(img => {
+        img.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openImageZoom(this.src);
+        });
+      });
+
+      window.openImageZoom = function(src) {
+        const modal = document.getElementById('img-zoom-modal');
+        const modalImg = document.getElementById('img-zoom-content');
+        if (modal && modalImg) {
+          modalImg.src = src;
+          modal.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+      };
+
+      window.closeImageZoom = function(e) {
+        if (e) e.stopPropagation();
+        const modal = document.getElementById('img-zoom-modal');
+        if (modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      };
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeImageZoom();
+      });
+    })();
+  </script>
+</body>
+</html>
