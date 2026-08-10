@@ -8,6 +8,11 @@ Operations (dispatched off ``params.operation``):
 - list_attachments     -> GET  /me/messages/{id}/attachments?$select=... (metadata only)
 - download_attachments -> GET  /me/messages/{id}/attachments (base64 contentBytes ->
                           workspace files); pairs with the documentParser node for text.
+
+The optional ``mailbox`` param retargets every op to a shared/other mailbox
+(``/users/{address}`` instead of ``/me``); empty keeps the signed-in user's
+own mailbox. Requires Full Access (+ Send As to send) on that mailbox and the
+.Shared OAuth scopes.
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from services.plugin import ActionNode, NodeContext, NodeUserError, Operation, TaskQueue
 
-from .._base import graph_request, track_microsoft_usage, write_attachment_bytes
+from .._base import graph_request, mailbox_base, track_microsoft_usage, write_attachment_bytes
 from .._credentials import MicrosoftCredential
 
 _SEND = {"displayOptions": {"show": {"operation": ["send"]}}}
@@ -34,6 +39,12 @@ _FILE_ATTACHMENT = "#microsoft.graph.fileAttachment"
 
 class MailParams(BaseModel):
     operation: Literal["send", "read", "search", "reply", "list_attachments", "download_attachments"] = "send"
+
+    # Target mailbox. Empty = the signed-in user's own mailbox. Set to a
+    # shared/other mailbox address (e.g. support@contoso.com) to operate on
+    # it — requires Full Access (+ Send As to send) on that mailbox and the
+    # .Shared OAuth scopes.
+    mailbox: str = Field(default="", description="Shared mailbox address (empty = your own mailbox).")
 
     # Send
     to: str = Field(
@@ -144,7 +155,8 @@ class MailNode(ActionNode):
         "search (find messages by text), reply (respond to a message), "
         "list_attachments (metadata for a message's attachments), "
         "download_attachments (save file attachments to the workspace; returns paths "
-        "for the document parser). read/search results include has_attachments."
+        "for the document parser). read/search results include has_attachments. "
+        "Set 'mailbox' to a shared mailbox address to operate on it instead of your own."
     )
     handles = (
         {"name": "input-main", "kind": "input", "position": "left", "label": "Input", "role": "main"},
@@ -202,7 +214,7 @@ class MailNode(ActionNode):
         await graph_request(
             ctx,
             "POST",
-            "/me/sendMail",
+            f"{mailbox_base(params.mailbox)}/sendMail",
             json={"message": message, "saveToSentItems": True},
         )
         await track_microsoft_usage(ctx.node_id, "send", 1, ctx.raw)
@@ -213,7 +225,7 @@ class MailNode(ActionNode):
             msg = await graph_request(
                 ctx,
                 "GET",
-                f"/me/messages/{params.message_id}",
+                f"{mailbox_base(params.mailbox)}/messages/{params.message_id}",
                 params={"$select": f"{self._SELECT},body"},
             )
             await track_microsoft_usage(ctx.node_id, "read", 1, ctx.raw)
@@ -235,7 +247,7 @@ class MailNode(ActionNode):
         data = await graph_request(
             ctx,
             "GET",
-            "/me/messages",
+            f"{mailbox_base(params.mailbox)}/messages",
             params={
                 "$top": min(params.max_results, 100),
                 "$select": self._SELECT,
@@ -254,7 +266,7 @@ class MailNode(ActionNode):
         data = await graph_request(
             ctx,
             "GET",
-            "/me/messages",
+            f"{mailbox_base(params.mailbox)}/messages",
             params={
                 "$search": f'"{params.query}"',
                 "$top": min(params.search_max_results, 100),
@@ -280,7 +292,7 @@ class MailNode(ActionNode):
         await graph_request(
             ctx,
             "POST",
-            f"/me/messages/{params.reply_message_id}/{endpoint}",
+            f"{mailbox_base(params.mailbox)}/messages/{params.reply_message_id}/{endpoint}",
             json={"comment": params.comment},
         )
         await track_microsoft_usage(ctx.node_id, "reply", 1, ctx.raw)
@@ -293,7 +305,7 @@ class MailNode(ActionNode):
         data = await graph_request(
             ctx,
             "GET",
-            f"/me/messages/{params.message_id}/attachments",
+            f"{mailbox_base(params.mailbox)}/messages/{params.message_id}/attachments",
             params={"$select": "id,name,contentType,size,isInline"},
         )
         items = (data or {}).get("value", [])
@@ -329,18 +341,19 @@ class MailNode(ActionNode):
         # attachments >3 MB Graph may omit contentBytes and require the
         # session upload/download API; that's out of scope (the >25 MiB guard
         # below skips oversize items rather than blowing the media read cap).
+        base = mailbox_base(params.mailbox)
         if params.attachment_id:
             single = await graph_request(
                 ctx,
                 "GET",
-                f"/me/messages/{params.message_id}/attachments/{params.attachment_id}",
+                f"{base}/messages/{params.message_id}/attachments/{params.attachment_id}",
             )
             items = [single] if single else []
         else:
             data = await graph_request(
                 ctx,
                 "GET",
-                f"/me/messages/{params.message_id}/attachments",
+                f"{base}/messages/{params.message_id}/attachments",
             )
             items = (data or {}).get("value", [])
 

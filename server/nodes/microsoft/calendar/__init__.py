@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from services.plugin import ActionNode, NodeContext, NodeUserError, Operation, TaskQueue
 
-from .._base import graph_request, track_microsoft_usage
+from .._base import graph_request, mailbox_base, track_microsoft_usage
 from .._credentials import MicrosoftCredential
 
 _CREATE = {"displayOptions": {"show": {"operation": ["create"]}}}
@@ -30,6 +30,10 @@ _UPDATE_OR_DELETE = {"displayOptions": {"show": {"operation": ["update", "delete
 
 class CalendarParams(BaseModel):
     operation: Literal["create", "list", "update", "delete"] = "list"
+
+    # Target mailbox calendar. Empty = your own; a shared mailbox address
+    # (/users/{addr}) requires Full Access + Calendars.ReadWrite.Shared.
+    mailbox: str = Field(default="", description="Shared mailbox address (empty = your own calendar).")
 
     event_id: str = Field(default="", json_schema_extra=_UPDATE_OR_DELETE)
 
@@ -167,7 +171,7 @@ class CalendarNode(ActionNode):
         if params.attendees:
             event["attendees"] = _attendees(params.attendees)
 
-        result = await graph_request(ctx, "POST", "/me/events", json=event)
+        result = await graph_request(ctx, "POST", f"{mailbox_base(params.mailbox)}/events", json=event)
         await track_microsoft_usage(ctx.node_id, "create", 1, ctx.raw)
         summary = _summarize(result or {})
         return CalendarOutput(
@@ -186,7 +190,7 @@ class CalendarNode(ActionNode):
         data = await graph_request(
             ctx,
             "GET",
-            "/me/calendarView",
+            f"{mailbox_base(params.mailbox)}/calendarView",
             params={
                 "startDateTime": start,
                 "endDateTime": end,
@@ -224,7 +228,7 @@ class CalendarNode(ActionNode):
         if not patch:
             raise NodeUserError("No update fields provided")
 
-        result = await graph_request(ctx, "PATCH", f"/me/events/{params.event_id}", json=patch)
+        result = await graph_request(ctx, "PATCH", f"{mailbox_base(params.mailbox)}/events/{params.event_id}", json=patch)
         await track_microsoft_usage(ctx.node_id, "update", 1, ctx.raw)
         summary = _summarize(result or {})
         return CalendarOutput(
@@ -240,6 +244,6 @@ class CalendarNode(ActionNode):
     async def _delete(self, ctx: NodeContext, params: CalendarParams) -> CalendarOutput:
         if not params.event_id:
             raise NodeUserError("Event ID is required")
-        await graph_request(ctx, "DELETE", f"/me/events/{params.event_id}")
+        await graph_request(ctx, "DELETE", f"{mailbox_base(params.mailbox)}/events/{params.event_id}")
         await track_microsoft_usage(ctx.node_id, "delete", 1, ctx.raw)
         return CalendarOutput(operation="delete", deleted=True, event_id=params.event_id)

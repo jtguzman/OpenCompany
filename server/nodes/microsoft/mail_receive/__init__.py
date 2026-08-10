@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.logging import get_logger
 from services.plugin import NodeContext, Operation, PollingTriggerNode, TaskQueue
 
-from .._base import graph_get_raw, mark_message_read_raw, track_microsoft_usage
+from .._base import graph_get_raw, mailbox_base, mark_message_read_raw, track_microsoft_usage
 from .._credentials import MicrosoftCredential
 
 logger = get_logger(__name__)
@@ -34,6 +34,10 @@ _SELECT = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,isRead
 
 
 class MailReceiveParams(BaseModel):
+    mailbox: str = Field(
+        default="",
+        description="Shared mailbox address to watch (empty = your own mailbox). Requires Full Access + Mail.ReadWrite.Shared.",
+    )
     only_unread: bool = Field(
         default=True,
         description="Only fire for unread messages (Graph $filter=isRead eq false).",
@@ -90,7 +94,8 @@ def _summarize(msg: Dict[str, Any]) -> Dict[str, Any]:
 def _list_path(params: Dict[str, Any]) -> str:
     folder = (params.get("folder") or "inbox").strip()
     # Well-known folder names and folder ids both slot into mailFolders/{id}.
-    return f"/me/mailFolders/{folder}/messages"
+    # mailbox_base() -> /me or /users/{shared-address}.
+    return f"{mailbox_base(params.get('mailbox'))}/mailFolders/{folder}/messages"
 
 
 def _query(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -147,7 +152,7 @@ class MailReceiveNode(PollingTriggerNode):
         return {m.get("id") for m in data.get("value", []) if m.get("id")}
 
     async def fetch_detail(self, service: Any, msg_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        msg = await graph_get_raw(f"/me/messages/{msg_id}", params={"$select": _SELECT})
+        msg = await graph_get_raw(f"{mailbox_base(params.get('mailbox'))}/messages/{msg_id}", params={"$select": _SELECT})
         detail = _summarize(msg)
         detail["id"] = msg_id  # stable cross-cycle dedup key for the workflow
         return detail
@@ -155,7 +160,7 @@ class MailReceiveNode(PollingTriggerNode):
     async def post_emit(self, service: Any, msg_id: str, params: Dict[str, Any]) -> None:
         if params.get("mark_as_read"):
             try:
-                await mark_message_read_raw(msg_id)
+                await mark_message_read_raw(msg_id, mailbox=params.get("mailbox"))
             except Exception as exc:  # noqa: BLE001
                 logger.warning(f"[msMailReceive] Failed to mark as read: {exc}")
 

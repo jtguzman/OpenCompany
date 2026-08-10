@@ -1,10 +1,10 @@
 ---
 name: ms-mail-skill
-description: Send, read, search, reply to, and handle attachments of Outlook email via Microsoft Graph. Compose messages, list recent mail, search by text, reply/reply-all, and list or download file attachments (e.g. PDFs) for parsing.
+description: Send, read, search, reply to, and handle attachments of Outlook email via Microsoft Graph — for your own mailbox or a shared mailbox. Compose messages, list recent mail, search by text, reply/reply-all, and list or download file attachments (e.g. PDFs) for parsing.
 allowed-tools: "ms_mail"
 metadata:
   author: opencompany
-  version: "1.1"
+  version: "1.2"
   category: productivity
 
 ---
@@ -210,8 +210,31 @@ pair it with the **Document Parser** node on the canvas:
 4. **Process an attachment**: on a message with `has_attachments: true`, call
    `download_attachments`, then run the Document Parser over `download_dir` to get the text.
 
+## Shared mailboxes
+
+Every operation accepts an optional `mailbox` field. Leave it empty to use the
+signed-in user's own mailbox (default). Set it to a shared/other mailbox address
+(e.g. `support@contoso.com`) to operate on that mailbox instead — the node then
+calls `/users/{address}/…` rather than `/me/…`.
+
+Requirements for a shared mailbox:
+- The signed-in account must have **Full Access** on the mailbox (and **Send As**
+  / **Send on Behalf** to send from it).
+- The `Mail.ReadWrite.Shared` / `Mail.Send.Shared` scopes must be granted
+  (reconnect in the Credentials Modal after these are added to re-consent).
+
+**Example - read a shared mailbox:**
+```json
+{
+  "operation": "read",
+  "mailbox": "support@contoso.com",
+  "max_results": 20
+}
+```
+
 ## Setup Requirements
 
 1. Connect the Outlook Mail node to an AI Agent's `input-tools` handle.
 2. Authenticate with Microsoft Graph in the Credentials Modal (Work/School account).
-3. Ensure the Mail.Send and Mail.ReadWrite scopes are granted.
+3. Ensure the Mail.Send and Mail.ReadWrite scopes are granted (plus the
+   `.Shared` variants if you use the `mailbox` field for a shared mailbox).
