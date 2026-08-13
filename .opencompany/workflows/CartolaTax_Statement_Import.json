@@ -1,0 +1,1408 @@
+{
+  "id": "statement_import_cartolatax",
+  "name": "CartolaTax — Statement Import (COORD + A1-A4)",
+  "slug": "CartolaTax_Statement_Import_1",
+  "nodes": [
+    {
+      "id": "si:ai_employee:1",
+      "position": {
+        "x": 940,
+        "y": 480
+      },
+      "type": "ai_employee",
+      "data": {
+        "label": "COORD — Coordinador"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:chatTrigger:1",
+      "position": {
+        "x": 540,
+        "y": 360
+      },
+      "type": "chatTrigger",
+      "data": {
+        "label": "Cartola / Chat"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:taskTrigger:1",
+      "position": {
+        "x": 540,
+        "y": 600
+      },
+      "type": "taskTrigger",
+      "data": {
+        "label": "Tarea Completada"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:taskManager:1",
+      "position": {
+        "x": 940,
+        "y": 240
+      },
+      "type": "taskManager",
+      "data": {
+        "label": "Task Manager"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:masterSkill:1",
+      "position": {
+        "x": 760,
+        "y": 240
+      },
+      "type": "masterSkill",
+      "data": {
+        "label": "COORD Skills"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:console:1",
+      "position": {
+        "x": 1340,
+        "y": 480
+      },
+      "type": "console",
+      "data": {
+        "label": "Console"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:coding_agent:1",
+      "position": {
+        "x": 220,
+        "y": 120
+      },
+      "type": "coding_agent",
+      "data": {
+        "label": "A1 — Procesa Archivos"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:masterSkill:2",
+      "position": {
+        "x": 60,
+        "y": 120
+      },
+      "type": "masterSkill",
+      "data": {
+        "label": "A1 Skills"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:context:1",
+      "position": {
+        "x": 60,
+        "y": 240
+      },
+      "type": "context",
+      "data": {
+        "label": "Context"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:shell:1",
+      "position": {
+        "x": 380,
+        "y": 120
+      },
+      "type": "shell",
+      "data": {
+        "label": "A1 shell"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileRead:1",
+      "position": {
+        "x": 380,
+        "y": 190
+      },
+      "type": "fileRead",
+      "data": {
+        "label": "A1 fileRead"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fsSearch:1",
+      "position": {
+        "x": 380,
+        "y": 260
+      },
+      "type": "fsSearch",
+      "data": {
+        "label": "A1 fsSearch"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:aiAgent:1",
+      "position": {
+        "x": 220,
+        "y": 840
+      },
+      "type": "aiAgent",
+      "data": {
+        "label": "A2 — Interpreta Cartola"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:masterSkill:3",
+      "position": {
+        "x": 60,
+        "y": 840
+      },
+      "type": "masterSkill",
+      "data": {
+        "label": "A2 Skills"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:context:2",
+      "position": {
+        "x": 60,
+        "y": 960
+      },
+      "type": "context",
+      "data": {
+        "label": "Context"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileRead:2",
+      "position": {
+        "x": 380,
+        "y": 840
+      },
+      "type": "fileRead",
+      "data": {
+        "label": "A2 fileRead"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fsSearch:2",
+      "position": {
+        "x": 380,
+        "y": 910
+      },
+      "type": "fsSearch",
+      "data": {
+        "label": "A2 fsSearch"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileModify:1",
+      "position": {
+        "x": 380,
+        "y": 980
+      },
+      "type": "fileModify",
+      "data": {
+        "label": "A2 fileModify"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:task_agent:1",
+      "position": {
+        "x": 1660,
+        "y": 120
+      },
+      "type": "task_agent",
+      "data": {
+        "label": "A3 — Consolida Informacion"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:masterSkill:4",
+      "position": {
+        "x": 1500,
+        "y": 120
+      },
+      "type": "masterSkill",
+      "data": {
+        "label": "A3 Skills"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:context:3",
+      "position": {
+        "x": 1500,
+        "y": 240
+      },
+      "type": "context",
+      "data": {
+        "label": "Context"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:javascriptExecutor:1",
+      "position": {
+        "x": 1820,
+        "y": 120
+      },
+      "type": "javascriptExecutor",
+      "data": {
+        "label": "A3 javascriptExecutor"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileRead:3",
+      "position": {
+        "x": 1820,
+        "y": 190
+      },
+      "type": "fileRead",
+      "data": {
+        "label": "A3 fileRead"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileModify:2",
+      "position": {
+        "x": 1820,
+        "y": 260
+      },
+      "type": "fileModify",
+      "data": {
+        "label": "A3 fileModify"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:tool_agent:1",
+      "position": {
+        "x": 1660,
+        "y": 840
+      },
+      "type": "tool_agent",
+      "data": {
+        "label": "A4 — Importa a Odoo"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:masterSkill:5",
+      "position": {
+        "x": 1500,
+        "y": 840
+      },
+      "type": "masterSkill",
+      "data": {
+        "label": "A4 Skills"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:context:4",
+      "position": {
+        "x": 1500,
+        "y": 960
+      },
+      "type": "context",
+      "data": {
+        "label": "Context"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:javascriptExecutor:2",
+      "position": {
+        "x": 1820,
+        "y": 840
+      },
+      "type": "javascriptExecutor",
+      "data": {
+        "label": "A4 javascriptExecutor"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileRead:4",
+      "position": {
+        "x": 1820,
+        "y": 910
+      },
+      "type": "fileRead",
+      "data": {
+        "label": "A4 fileRead"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileModify:3",
+      "position": {
+        "x": 1820,
+        "y": 980
+      },
+      "type": "fileModify",
+      "data": {
+        "label": "A4 fileModify"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileRead:5",
+      "position": {
+        "x": 760,
+        "y": 600
+      },
+      "type": "fileRead",
+      "data": {
+        "label": "COORD File Read"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:documentParser:1",
+      "position": {
+        "x": 540,
+        "y": 120
+      },
+      "type": "documentParser",
+      "data": {
+        "label": "Document Parser (PDF->texto)"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fileModify:4",
+      "position": {
+        "x": 380,
+        "y": 340
+      },
+      "type": "fileModify",
+      "data": {
+        "label": "A1 File Modify"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:writeTodos:1",
+      "position": {
+        "x": 1820,
+        "y": 340
+      },
+      "type": "writeTodos",
+      "data": {
+        "label": "A3 Write Todos"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:writeTodos:2",
+      "position": {
+        "x": 1820,
+        "y": 1060
+      },
+      "type": "writeTodos",
+      "data": {
+        "label": "A4 Write Todos"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:fsSearch:3",
+      "position": {
+        "x": 1820,
+        "y": 1130
+      },
+      "type": "fsSearch",
+      "data": {
+        "label": "A4 FS Search"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:writeTodos:3",
+      "position": {
+        "x": 760,
+        "y": 780
+      },
+      "type": "writeTodos",
+      "data": {
+        "label": "COORD Write Todos"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:simpleMemory:1",
+      "position": {
+        "x": 760,
+        "y": 850
+      },
+      "type": "simpleMemory",
+      "data": {
+        "label": "COORD Memory"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:console:2",
+      "position": {
+        "x": 560,
+        "y": 120
+      },
+      "type": "console",
+      "data": {
+        "label": "A1 Console"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:console:3",
+      "position": {
+        "x": 560,
+        "y": 840
+      },
+      "type": "console",
+      "data": {
+        "label": "A2 Console"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:console:4",
+      "position": {
+        "x": 2000,
+        "y": 120
+      },
+      "type": "console",
+      "data": {
+        "label": "A3 Console"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:console:5",
+      "position": {
+        "x": 2000,
+        "y": 840
+      },
+      "type": "console",
+      "data": {
+        "label": "A4 Console"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:httpRequest:1",
+      "position": {
+        "x": 1820,
+        "y": 320
+      },
+      "type": "odooJsonRpc",
+      "data": {
+        "label": "A3 Odoo Odoo"
+      },
+      "width": 80,
+      "height": 86
+    },
+    {
+      "id": "si:httpRequest:2",
+      "position": {
+        "x": 2020,
+        "y": 320
+      },
+      "type": "odooJsonRpc",
+      "data": {
+        "label": "A4 Odoo Odoo"
+      },
+      "width": 80,
+      "height": 86
+    }
+  ],
+  "edges": [
+    {
+      "animated": true,
+      "id": "e-si:chatTrigger:1-output-main-si:ai_employee:1-input-main",
+      "source": "si:chatTrigger:1",
+      "sourceHandle": "output-main",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:taskTrigger:1-output-main-si:ai_employee:1-input-task",
+      "source": "si:taskTrigger:1",
+      "sourceHandle": "output-main",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-task",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:taskManager:1-output-tool-si:ai_employee:1-input-tools",
+      "source": "si:taskManager:1",
+      "sourceHandle": "output-tool",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:masterSkill:1-output-tool-si:ai_employee:1-input-skill",
+      "source": "si:masterSkill:1",
+      "sourceHandle": "output-tool",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-skill",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:ai_employee:1-output-main-si:console:1-input-main",
+      "source": "si:ai_employee:1",
+      "sourceHandle": "output-main",
+      "target": "si:console:1",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:coding_agent:1-output-top-si:ai_employee:1-input-teammates",
+      "source": "si:coding_agent:1",
+      "sourceHandle": "output-top",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-teammates",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:masterSkill:2-output-tool-si:coding_agent:1-input-skill",
+      "source": "si:masterSkill:2",
+      "sourceHandle": "output-tool",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-skill",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:context:1-output-context-si:coding_agent:1-input-context",
+      "source": "si:context:1",
+      "sourceHandle": "output-context",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-context",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:shell:1-output-tool-si:coding_agent:1-input-tools",
+      "source": "si:shell:1",
+      "sourceHandle": "output-tool",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileRead:1-output-tool-si:coding_agent:1-input-tools",
+      "source": "si:fileRead:1",
+      "sourceHandle": "output-tool",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fsSearch:1-output-tool-si:coding_agent:1-input-tools",
+      "source": "si:fsSearch:1",
+      "sourceHandle": "output-tool",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:aiAgent:1-output-top-si:ai_employee:1-input-teammates",
+      "source": "si:aiAgent:1",
+      "sourceHandle": "output-top",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-teammates",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:masterSkill:3-output-tool-si:aiAgent:1-input-skill",
+      "source": "si:masterSkill:3",
+      "sourceHandle": "output-tool",
+      "target": "si:aiAgent:1",
+      "targetHandle": "input-skill",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:context:2-output-context-si:aiAgent:1-input-context",
+      "source": "si:context:2",
+      "sourceHandle": "output-context",
+      "target": "si:aiAgent:1",
+      "targetHandle": "input-context",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileRead:2-output-tool-si:aiAgent:1-input-tools",
+      "source": "si:fileRead:2",
+      "sourceHandle": "output-tool",
+      "target": "si:aiAgent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fsSearch:2-output-tool-si:aiAgent:1-input-tools",
+      "source": "si:fsSearch:2",
+      "sourceHandle": "output-tool",
+      "target": "si:aiAgent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileModify:1-output-tool-si:aiAgent:1-input-tools",
+      "source": "si:fileModify:1",
+      "sourceHandle": "output-tool",
+      "target": "si:aiAgent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:task_agent:1-output-top-si:ai_employee:1-input-teammates",
+      "source": "si:task_agent:1",
+      "sourceHandle": "output-top",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-teammates",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:masterSkill:4-output-tool-si:task_agent:1-input-skill",
+      "source": "si:masterSkill:4",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-skill",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:context:3-output-context-si:task_agent:1-input-context",
+      "source": "si:context:3",
+      "sourceHandle": "output-context",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-context",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:javascriptExecutor:1-output-tool-si:task_agent:1-input-tools",
+      "source": "si:javascriptExecutor:1",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileRead:3-output-tool-si:task_agent:1-input-tools",
+      "source": "si:fileRead:3",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileModify:2-output-tool-si:task_agent:1-input-tools",
+      "source": "si:fileModify:2",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:tool_agent:1-output-top-si:ai_employee:1-input-teammates",
+      "source": "si:tool_agent:1",
+      "sourceHandle": "output-top",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-teammates",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:masterSkill:5-output-tool-si:tool_agent:1-input-skill",
+      "source": "si:masterSkill:5",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-skill",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:context:4-output-context-si:tool_agent:1-input-context",
+      "source": "si:context:4",
+      "sourceHandle": "output-context",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-context",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:javascriptExecutor:2-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:javascriptExecutor:2",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileRead:4-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:fileRead:4",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileModify:3-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:fileModify:3",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileRead:5-output-tool-si:ai_employee:1-input-tools",
+      "source": "si:fileRead:5",
+      "sourceHandle": "output-tool",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:documentParser:1-output-main-si:ai_employee:1-input-main",
+      "source": "si:documentParser:1",
+      "sourceHandle": "output-main",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fileModify:4-output-tool-si:coding_agent:1-input-tools",
+      "source": "si:fileModify:4",
+      "sourceHandle": "output-tool",
+      "target": "si:coding_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:writeTodos:1-output-tool-si:task_agent:1-input-tools",
+      "source": "si:writeTodos:1",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:writeTodos:2-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:writeTodos:2",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:fsSearch:3-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:fsSearch:3",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:writeTodos:3-output-tool-si:ai_employee:1-input-tools",
+      "source": "si:writeTodos:3",
+      "sourceHandle": "output-tool",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:simpleMemory:1-output-tool-si:ai_employee:1-input-tools",
+      "source": "si:simpleMemory:1",
+      "sourceHandle": "output-tool",
+      "target": "si:ai_employee:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:coding_agent:1-output-main-si:console:2-input-main",
+      "source": "si:coding_agent:1",
+      "sourceHandle": "output-main",
+      "target": "si:console:2",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:aiAgent:1-output-main-si:console:3-input-main",
+      "source": "si:aiAgent:1",
+      "sourceHandle": "output-main",
+      "target": "si:console:3",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:task_agent:1-output-main-si:console:4-input-main",
+      "source": "si:task_agent:1",
+      "sourceHandle": "output-main",
+      "target": "si:console:4",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:tool_agent:1-output-main-si:console:5-input-main",
+      "source": "si:tool_agent:1",
+      "sourceHandle": "output-main",
+      "target": "si:console:5",
+      "targetHandle": "input-main",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:httpRequest:1-output-tool-si:task_agent:1-input-tools",
+      "source": "si:httpRequest:1",
+      "sourceHandle": "output-tool",
+      "target": "si:task_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e-si:httpRequest:2-output-tool-si:tool_agent:1-input-tools",
+      "source": "si:httpRequest:2",
+      "sourceHandle": "output-tool",
+      "target": "si:tool_agent:1",
+      "targetHandle": "input-tools",
+      "type": "smoothstep"
+    }
+  ],
+  "createdAt": 1785000000000,
+  "lastModified": 1785000000000,
+  "version": "0.0.95",
+  "nodeParameters": {
+    "si:ai_employee:1": {
+      "prompt": "",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "system_message": "Eres el COORDINADOR del sistema CartolaTax. Enrutas cada sesion de importacion de cartola por la maquina de estados, delegando cada paso al agente que corresponde y ENCADENANDO los pasos hasta un estado terminal.\n\nTEAMMATES (usa estos assignee_node_id exactos en task_manager):\n- A1 Procesa Archivos = \"si:coding_agent:1\"  (formato, paginas, paquete de sesion, sha256/duplicado)\n- A2 Interpreta Cartola = \"si:aiAgent:1\"  (custodio, diccionario, tablas, JSON de la cartola)\n- A3 Consolida Informacion = \"si:task_agent:1\"  (lookups Odoo, cliente/instrumento, totales, pendientes)\n- A4 Importa a Odoo = \"si:tool_agent:1\"  (payload kardex, simular, create JSON-RPC)\n\nDELEGACION: delega SIEMPRE con task_manager(assign_task, assignee_node_id, title, mission, context, acceptance_criteria). NUNCA llames delegate_to_* directamente.\n\nENCADENAMIENTO AUTOMATICO (clave): despues de que un agente devuelve su resultado (tarea completed) y lo revisas, NO te detengas ni esperes al usuario: delega INMEDIATAMENTE el siguiente paso de la maquina de estados, pasando en 'context' el resultado del paso anterior. La secuencia normal es A1 -> A2 -> A3 -> A4. Solo te detienes y consultas al usuario por chat cuando: (a) hay pendientes que requieren su confirmacion, (b) se alcanza estado REQUIERE_USUARIO, o (c) se llega a un estado terminal (IMPORTADA / IMPORTADA_PARCIAL / RECHAZADA). Si el usuario pidio explicitamente detenerse antes de Odoo, para tras A2.\n\nDUPLICADOS Y OVERRIDE: si A1 reporta la cartola como duplicada (mismo hash ya procesado) y por eso deja la sesion en RECHAZADA, informa al usuario. Si el usuario responde que quiere procesarla de todos modos (ej. \"procesa igual\", \"forzar\", \"ignora el duplicado\"), vuelve a delegar a A1 con context.forzar_reproceso = true; A1 debe entonces saltar el bloqueo de duplicado y continuar el pipeline normalmente. No trates la respuesta del usuario como una cartola nueva: reanuda la MISMA sesion con el override.\n\nHERRAMIENTAS: NUNCA uses la herramienta Skill (load/read_resource/search_resource) para leer archivos del usuario o del workspace — SOLO lee recursos internos de un skill. Para leer un archivo delega a A1; para inspeccionar texto usa el nodo fileRead. El texto ya extraido del PDF llega por tu input-main desde el nodo Document Parser.\n\nSALIDA AL USUARIO: al terminar, resume la sesion (custodio, movimientos, estado final, lineas cargadas/pendientes) y lista los pendientes que requieran su confirmacion.",
+      "label": "COORD — Coordinador"
+    },
+    "si:chatTrigger:1": {
+      "placeholder": "Envia una cartola o responde pendientes...",
+      "reset_policy": "preserve",
+      "label": "Cartola / Chat"
+    },
+    "si:taskTrigger:1": {
+      "task_id": "",
+      "agent_name": "",
+      "status_filter": "all",
+      "parent_node_id": "",
+      "label": "Tarea Completada"
+    },
+    "si:taskManager:1": {
+      "operation": "list_tasks",
+      "task_id": null,
+      "status_filter": null,
+      "label": "Task Manager"
+    },
+    "si:masterSkill:1": {
+      "skill_folder": "statement_import",
+      "skills_config": {
+        "cerrar-y-notificar-sesion": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "consultar-al-usuario-en-lote": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "orquestar-sesion-cartola": {
+          "enabled": true,
+          "instructions": ""
+        }
+      },
+      "label": "COORD Skills"
+    },
+    "si:console:1": {
+      "log_mode": "field",
+      "field_path": "{{coord.response}}",
+      "expression": "",
+      "format": "json",
+      "label": "Console"
+    },
+    "si:coding_agent:1": {
+      "prompt": "",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "system_message": "Eres A1 (Procesa Archivos). Tu trabajo completo está en UNA sola skill: `procesa-archivo-cartola` (runbook de 4 pasos: detectar formato real con el nodo shell file/unzip, indexar páginas, aislar página 1, y sha256 para duplicados). Cárgala UNA vez con Skill y ejecuta sus pasos en orden; NO cargues otras skills ni vuelvas al Coordinador entre pasos. IMPORTANTE: el nodo shell es Nushell, NO bash: encadena con ';' (no '&&'); para filtrar usa fs_search o primitivas Nushell (open/where/str contains), no grep. Si el context trae forzar_reproceso:true, salta el bloqueo de duplicado. No interpretas cifras ni consultas Odoo. Devuelve UN resultado (formato, paginas, hash, duplicado:bool) y el Coordinador decide; no mantengas enum de estados.",
+      "label": "A1 — Procesa Archivos"
+    },
+    "si:masterSkill:2": {
+      "skill_folder": "statement_import",
+      "skills_config": {
+        "procesa-archivo-cartola": {
+          "enabled": true,
+          "instructions": ""
+        }
+      },
+      "label": "A1 Skills"
+    },
+    "si:context:1": {
+      "label": "Context"
+    },
+    "si:shell:1": {
+      "label": "A1 shell"
+    },
+    "si:fileRead:1": {
+      "label": "A1 fileRead"
+    },
+    "si:fsSearch:1": {
+      "label": "A1 fsSearch"
+    },
+    "si:aiAgent:1": {
+      "prompt": "",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "system_message": "Eres A2 (Interpreta Cartola). Tu trabajo completo está en UNA sola skill: `interpreta-cartola` (runbook de 4 pasos: identificar custodio desde la página 1, recuperar su diccionario íntegro, extraer y clasificar movimientos en 4 destinos, y emitir el cartola.json validado). Cárgala UNA vez con Skill y ejecuta sus pasos en orden; NO vuelvas al Coordinador entre pasos. Solo dos skills adicionales, y solo si aplican: `leer-tabla-desde-imagen` (página escaneada/desalineada) y `proponer-actualizacion-diccionario`. Lees texto o la imagen .jpeg vía file_read/visión; escribes con file_modify. El LLM NUNCA calcula (eso es A3); nunca consultas Odoo. Escalas con pendientes en vez de adivinar. Devuelve UN resultado (ruta cartola.json, custodio, confianza) y el Coordinador decide; no mantengas enum de estados. La herramienta Skill solo devuelve el contenido de una skill ya cargada: no busques archivos de recursos que no existen.",
+      "label": "A2 — Interpreta Cartola"
+    },
+    "si:masterSkill:3": {
+      "skill_folder": "statement_import",
+      "skills_config": {
+        "interpreta-cartola": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "leer-tabla-desde-imagen": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "proponer-actualizacion-diccionario": {
+          "enabled": true,
+          "instructions": ""
+        }
+      },
+      "label": "A2 Skills"
+    },
+    "si:context:2": {
+      "label": "Context"
+    },
+    "si:fileRead:2": {
+      "label": "A2 fileRead"
+    },
+    "si:fsSearch:2": {
+      "label": "A2 fsSearch"
+    },
+    "si:fileModify:1": {
+      "label": "A2 fileModify"
+    },
+    "si:task_agent:1": {
+      "prompt": "",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "system_message": "Eres A3 (Consolida Información). Tu trabajo principal está en UNA sola skill: `consolida-informacion` (runbook de 5 pasos: obtener maestros de Odoo, resolver cliente titular, emparejar instrumentos, validar/calcular totales, detectar duplicados). Cárgala UNA vez con Skill y ejecuta sus pasos en orden; NO vuelvas al Coordinador entre pasos. Skills adicionales solo si aplican: `armar-lote-de-pendientes` y `aplicar-respuestas-al-json`. Odoo se consulta con la tool odoo_jsonrpc (SOLO LECTURA en A3; host/db/credenciales fijos en el nodo, invisibles: eliges model+method+domain/fields, no URLs). La aritmética exacta va en javascriptExecutor, nunca en el prompt. Nunca reinterpretas la cartola (eso es A2); ante duda levanta pendiente. Devuelve UN resultado y el Coordinador decide; no mantengas enum de estados.",
+      "label": "A3 — Consolida Informacion"
+    },
+    "si:masterSkill:4": {
+      "skill_folder": "statement_import",
+      "skills_config": {
+        "consolida-informacion": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "armar-lote-de-pendientes": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "aplicar-respuestas-al-json": {
+          "enabled": true,
+          "instructions": ""
+        }
+      },
+      "label": "A3 Skills"
+    },
+    "si:context:3": {
+      "label": "Context"
+    },
+    "si:javascriptExecutor:1": {
+      "label": "A3 javascriptExecutor"
+    },
+    "si:fileRead:3": {
+      "label": "A3 fileRead"
+    },
+    "si:fileModify:2": {
+      "label": "A3 fileModify"
+    },
+    "si:tool_agent:1": {
+      "prompt": "",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "system_message": "Eres A4 (Importa a Odoo), ÚNICO punto de escritura del sistema. Tu trabajo principal está en UNA sola skill: `importa-a-odoo` (runbook de 4 pasos: construir payload, pre-validar contra Odoo, insertar con un solo create header+líneas y read-back, notificar). Cárgala UNA vez con Skill y ejecuta sus pasos en orden; NO vuelvas al Coordinador entre pasos. Skill adicional solo si hay rechazos: `administrar-casos-de-borde-carga`. Odoo se consulta y escribe con la tool odoo_jsonrpc (host/db/credenciales fijos en el nodo, invisibles: eliges model+method+values, no URLs). La aritmética (redondeo unit_price 4dp, total_amount en decimales de la moneda) va en javascriptExecutor. Modelos reales: kardex.import.log (header) y kardex.import.line (líneas, NO .log.line). Envía financial_instrument_id + financial_instrument_name juntos; nunca line_ids vacío. Devuelve UN resultado (carga_completa, lineas_ok/error, log_id) y el Coordinador decide; no mantengas enum de estados.",
+      "label": "A4 — Importa a Odoo"
+    },
+    "si:masterSkill:5": {
+      "skill_folder": "statement_import",
+      "skills_config": {
+        "importa-a-odoo": {
+          "enabled": true,
+          "instructions": ""
+        },
+        "administrar-casos-de-borde-carga": {
+          "enabled": true,
+          "instructions": ""
+        }
+      },
+      "label": "A4 Skills"
+    },
+    "si:context:4": {
+      "label": "Context"
+    },
+    "si:javascriptExecutor:2": {
+      "label": "A4 javascriptExecutor"
+    },
+    "si:fileRead:4": {
+      "label": "A4 fileRead"
+    },
+    "si:fileModify:3": {
+      "label": "A4 fileModify"
+    },
+    "si:fileRead:5": {
+      "label": "COORD File Read"
+    },
+    "si:documentParser:1": {
+      "parser": "pypdf",
+      "file_path": "cartola.pdf",
+      "input_dir": "",
+      "file_pattern": "*.pdf",
+      "label": "Document Parser (PDF->texto)"
+    },
+    "si:fileModify:4": {
+      "label": "A1 File Modify"
+    },
+    "si:writeTodos:1": {
+      "label": "A3 Write Todos"
+    },
+    "si:writeTodos:2": {
+      "label": "A4 Write Todos"
+    },
+    "si:fsSearch:3": {
+      "label": "A4 FS Search"
+    },
+    "si:writeTodos:3": {
+      "label": "COORD Write Todos"
+    },
+    "si:simpleMemory:1": {
+      "label": "COORD Memory"
+    },
+    "si:console:2": {
+      "log_mode": "field",
+      "field_path": "{{response}}",
+      "expression": "",
+      "format": "json",
+      "label": "A1 Console"
+    },
+    "si:console:3": {
+      "log_mode": "field",
+      "field_path": "{{response}}",
+      "expression": "",
+      "format": "json",
+      "label": "A2 Console"
+    },
+    "si:console:4": {
+      "log_mode": "field",
+      "field_path": "{{response}}",
+      "expression": "",
+      "format": "json",
+      "label": "A3 Console"
+    },
+    "si:console:5": {
+      "log_mode": "field",
+      "field_path": "{{response}}",
+      "expression": "",
+      "format": "json",
+      "label": "A4 Console"
+    },
+    "si:httpRequest:1": {
+      "host": "",
+      "db": "",
+      "username": "",
+      "api_key": "",
+      "timeout": 60,
+      "label": "A3 Odoo"
+    },
+    "si:httpRequest:2": {
+      "host": "",
+      "db": "",
+      "username": "",
+      "api_key": "",
+      "timeout": 60,
+      "label": "A4 Odoo"
+    }
+  },
+  "requirements": {
+    "credentials": [
+      {
+        "provider_id": "anthropic"
+      }
+    ],
+    "nodes": [
+      {
+        "type": "ai_employee",
+        "version": 1
+      },
+      {
+        "type": "chatTrigger",
+        "version": 1
+      },
+      {
+        "type": "taskTrigger",
+        "version": 1
+      },
+      {
+        "type": "taskManager",
+        "version": 1
+      },
+      {
+        "type": "masterSkill",
+        "version": 1
+      },
+      {
+        "type": "console",
+        "version": 1
+      },
+      {
+        "type": "coding_agent",
+        "version": 1
+      },
+      {
+        "type": "masterSkill",
+        "version": 1
+      },
+      {
+        "type": "context",
+        "version": 2
+      },
+      {
+        "type": "shell",
+        "version": 1
+      },
+      {
+        "type": "fileRead",
+        "version": 1
+      },
+      {
+        "type": "fsSearch",
+        "version": 1
+      },
+      {
+        "type": "aiAgent",
+        "version": 1
+      },
+      {
+        "type": "masterSkill",
+        "version": 1
+      },
+      {
+        "type": "context",
+        "version": 2
+      },
+      {
+        "type": "fileRead",
+        "version": 1
+      },
+      {
+        "type": "fsSearch",
+        "version": 1
+      },
+      {
+        "type": "fileModify",
+        "version": 1
+      },
+      {
+        "type": "task_agent",
+        "version": 1
+      },
+      {
+        "type": "masterSkill",
+        "version": 1
+      },
+      {
+        "type": "context",
+        "version": 2
+      },
+      {
+        "type": "javascriptExecutor",
+        "version": 1
+      },
+      {
+        "type": "fileRead",
+        "version": 1
+      },
+      {
+        "type": "fileModify",
+        "version": 1
+      },
+      {
+        "type": "tool_agent",
+        "version": 1
+      },
+      {
+        "type": "masterSkill",
+        "version": 1
+      },
+      {
+        "type": "context",
+        "version": 2
+      },
+      {
+        "type": "javascriptExecutor",
+        "version": 1
+      },
+      {
+        "type": "fileRead",
+        "version": 1
+      },
+      {
+        "type": "fileModify",
+        "version": 1
+      },
+      {
+        "type": "fileRead",
+        "version": 1
+      },
+      {
+        "type": "documentParser",
+        "version": 1
+      },
+      {
+        "type": "fileModify",
+        "version": 1
+      },
+      {
+        "type": "writeTodos",
+        "version": 1
+      },
+      {
+        "type": "writeTodos",
+        "version": 1
+      },
+      {
+        "type": "fsSearch",
+        "version": 1
+      },
+      {
+        "type": "writeTodos",
+        "version": 1
+      },
+      {
+        "type": "simpleMemory",
+        "version": 1
+      },
+      {
+        "type": "console",
+        "version": 1
+      },
+      {
+        "type": "console",
+        "version": 1
+      },
+      {
+        "type": "console",
+        "version": 1
+      },
+      {
+        "type": "console",
+        "version": 1
+      }
+    ]
+  }
+}
