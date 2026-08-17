@@ -225,6 +225,63 @@ live in `nodes/<plugin>/_events.py`. Cross-cutting factories
 See RFC §6.4 for the classification rule + the canonical
 `telegram/_events.py` example.
 
+### UI-only lifecycle events broadcast directly, never through `emit`
+
+`dispatch.emit` exists to reach **Temporal consumers**: it runs a Visibility
+`ListWorkflowExecutions` query to find running listeners, then broadcasts
+in-process as a side effect. That query is only worth paying for when some node
+type registered the event via `register_canary_trigger_type`.
+
+The Context lifecycle events (`context.updated` / `context.compacted` /
+`context.epoch.started`, in `nodes/context/_events.py`) have no canary consumer,
+so the query is guaranteed to match nothing — once per journal append. They call
+`get_status_broadcaster().broadcast({...})` directly instead, which is the same
+pattern `nodes/telegram/_events.py` uses for status. The CloudEvents envelope,
+`source`, `type`, `subject` and `data` are identical either way, so the wire
+contract the frontend sees does not change.
+
+Rule of thumb: **if no `register_canary_trigger_type` call names your event
+type, broadcast it directly.** Reach for `emit` only when a Temporal workflow
+has to receive it. `tests/nodes/test_context_events.py` locks this for Context
+by parsing the module's imports (AST, not grep, so the docstring can explain
+the reasoning without tripping the assertion).
+
+### Context events are emitted at the persistence boundary
+
+`AgentContextStore` is the one place every Context writer passes through — the
+in-process agent loop, the Temporal LLM activity, and the CLI-agent bridge all
+reach durable state through it. So the "thread advanced" notification is emitted
+there rather than at each call site, via a fanout registry in
+`services/agent_context/listeners.py`:
+
+```python
+register_context_commit_listener(async_fn)   # nodes/context/__init__.py
+await notify_context_commit(ref, provider=..., active_token_count=..., sequence=...)
+```
+
+Same shape as the plugin registries in `plugin_system.md`, and for the same
+reason: the store must never import `nodes/`. A new writer gets live updates for
+free, and no caller carries broadcast code.
+
+Three properties are load-bearing and have tests in
+`tests/services/agent_context/test_commit_listeners.py`:
+
+- **After commit, after reload.** The notification carries the post-commit
+  revision and can never be observed ahead of the state it describes.
+- **Replays emit nothing.** `append_transition` returns early on a reused
+  `operation_id` without committing; broadcasting there would wake every open
+  panel for something that did not happen.
+- **A listener can never fail a commit.** `notify_context_commit` swallows and
+  logs. These commits run inside the Temporal LLM activity's post-send window,
+  which is heartbeat-silent under a 60 s `heartbeat_timeout` on a
+  `maximum_attempts=1` retry policy — a throwing or slow listener there would
+  fail a run over a UI notification.
+
+Epoch rotation is deliberately **not** routed through the store listener:
+`start_epoch`'s callers already emit `context.epoch.started` with a `reason`
+(`clear` / `fork` / `workflow_reset`) the store cannot know, so emitting from
+the store would both duplicate the broadcast and lose the reason.
+
 ## Verification
 
 Each Phase-A milestone has a verification command:
@@ -274,7 +331,13 @@ Locked by `TestCloudEventTypeMatchesSearchAttribute` in [`test_canary_registry.p
 
 `event_waiter.dispatch` / `broadcaster.send_custom_event` calls inside canary-registered plugin `_events.py` files (chat / webhook / task / telegram / email) had zero consumers in canary-on mode — the deployment manager skips `setup_event_trigger` when `is_canary_trigger_type(...)` is True, so no legacy waiter ever registered. Removed.
 
-- `dispatch.emit(envelope, wire_routing_key=...)` is the single delivery path. It signals legacy `EventType` consumers and running workflow controllers through one Temporal Visibility query, while broadcasting to the frontend on the same wire key. Each controller filters against its durable trigger registry.
+- `dispatch.emit(envelope, wire_routing_key=...)` is the single delivery path. It signals legacy `EventType` consumers and running workflow controllers through one Temporal Visibility query, while broadcasting to the frontend on the same wire key. Each controller filters against its durable trigger registry — note this is a match on the **CloudEvents type**, not on the trigger node's own parameters.
+
+- **The trigger node's own filter is applied in `TriggerListenerWorkflow._spawn_child_run`**, gated on the `machina-trigger-listener-node-filter` patch. That method is the single choke point: `WorkflowControlWorkflow._spawn_push_run` constructs a `TriggerListenerWorkflow` purely to call it, so both the controller path and the legacy listener path go through one branch. The predicate runs in `evaluate_trigger_filter_activity` rather than inline, because filter builders live in plugin folders and reach imports the workflow sandbox forbids; the recorded boolean keeps replay deterministic. It receives the CloudEvents **`data` member, not the envelope** (`event_waiter.dispatch` unpacks to `(event_type, data)` and hands filters the inner payload), and fails **open** — an unknown node type, malformed payload or raising builder all admit the event, because over-firing is recoverable while a dropped trigger event looks like a broken product.
+
+  Before this, `filter_params` was carried in `listener_data` and never read, so the `EventType` Search Attribute was the only narrowing and every event of the right type spawned a run: a `webhookTrigger` bound to `/a` fired on a POST to `/b` (all webhooks share one CloudEvents type and are unscoped), a `taskTrigger` watching one agent fired on every task, and a `whatsappReceive` scoped to one group fired on every message. The canvas-Run path applied these filters, so Run and deploy disagreed about what the same node does.
+
+  `listener_data["filter_params"]` is the only possible source: the graph snapshot carries no parameters (`node.data` holds just the label, and `load_persisted_workflow_graph_activity` returns nodes and edges only), so the hot graph re-read cannot supply them. Editing a deployed trigger's filter therefore takes effect on **re-deploy** — consistent with the trigger node itself, which is pre-executed with the event as its output and never re-reads its parameters at run time.
 - For workflow-control generations, trigger definitions, push-event signals,
   and polling activities live directly in the generation's
   `WorkflowControlWorkflow`. There are no separate listener workflow runs;

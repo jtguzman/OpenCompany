@@ -14,6 +14,8 @@
     "vertexCloudTool",
 
     "simpleMemory",
+    "dataSource",
+    "visionAnalyze",
     "masterSkill",
 
     "openaiChatModel",
@@ -31,6 +33,16 @@
 
     "telegramSend",
     "telegramReceive",
+
+    "discordSend",
+    "discordAction",
+    "discordReceive",
+    "discordInteraction",
+
+    "whatsappBusinessSend",
+    "whatsappBusinessReceive",
+    "whatsappBusinessStatus",
+    "whatsappBusinessMedia",
 
     "airplaneModeControl",
     "appLauncher",

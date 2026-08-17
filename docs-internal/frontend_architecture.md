@@ -120,7 +120,6 @@ client/src/
 │   ├── ui/
 │   │   ├── ApiKeyInput.tsx         # Composite: input + eye toggle + save/delete buttons
 │   │   ├── SettingsPanel.tsx       # Shadcn Switch + Slider + Input
-│   │   ├── PricingConfigModal.tsx  # (client/src/components/PricingConfigModal.tsx)
 │   │   ├── ConsolePanel.tsx        # Chat + console + terminal + output
 │   │   ├── Modal.tsx               # Shadcn Dialog wrapper
 │   │   ├── NodeOutputPanel.tsx     # Deleted (superseded by output/OutputPanel)
@@ -128,8 +127,6 @@ client/src/
 │   │
 │   ├── icons/                      # AI provider icons (SVG data URIs)
 │   ├── auth/                       # Login page + protected route
-│   ├── shared/
-│   │   └── JSONTreeRenderer.tsx    # Recursive JSON tree (no styled-components)
 │   ├── SquareNode.tsx, StartNode.tsx, TriggerNode.tsx, GenericNode.tsx, AIAgentNode.tsx, WhatsAppNode.tsx, ModelNode.tsx
 │   │                               # React Flow nodes with lucide icons
 │   └── APIKeyValidator.tsx         # Shadcn Input + Button + Tooltip composition
@@ -150,7 +147,7 @@ client/src/
 │   ├── useComponentPalette.ts / useDragAndDrop.ts / useDragWorkspaceFile.ts
 │   ├── useOnboarding.ts            # Reads via useUserSettingsQuery; writes via mutation
 │   ├── useParameterPanel.ts        # Thin orchestrator over useNodeParamsQuery + save mutation
-│   ├── usePricing.ts / useToolSchema.ts / useWhatsApp.ts / useAndroidOperations.ts
+│   ├── useWhatsApp.ts             # WS-based WhatsApp ops (Android ops go via useWebSocket directly)
 │   └── useCopyPaste.ts / useRename.ts
 │
 ├── store/
@@ -477,7 +474,7 @@ This is the rule that keeps the data layer schema-driven instead of imperatively
 | **`stores/nodeStatusStore.ts`** (Zustand) | Per-workflow node-execution statuses -- moved out of WebSocketContext so a status tick does not cascade through the React tree. `useNodeStatus(id)` is a slice selector; only the affected node's consumers re-render. Mirror this pattern for any new high-frequency push state. | `allStatuses[workflowId][nodeId]`, `currentWorkflowId` |
 
 **Hard rules:**
-- **Read Zustand stores via slice selectors, never whole-store destructure.** Always `const x = useAppStore((s) => s.x)`, never `const { x } = useAppStore()`. The whole-store form re-renders the consumer on ANY store mutation (sidebar toggle, unrelated workflow rename, parameter save on another node), which defeats `React.memo` + `nodePropsEqual` on the canvas. Setters are stable refs from Zustand — single-field selectors are the cheapest read. Audited and converted across the canvas + parameter-panel hot paths (every node component, `Dashboard.tsx`, `useDragVariable`, `useParameterPanel`, `useReactFlowNodes`, `useWorkflowManagement`, `InputSection`, `MiddleSection`, `OutputPanel`, `ParameterRenderer`, `ToolSchemaEditor`, `ParameterPanel`, `InputNodesPanel`).
+- **Read Zustand stores via slice selectors, never whole-store destructure.** Always `const x = useAppStore((s) => s.x)`, never `const { x } = useAppStore()`. The whole-store form re-renders the consumer on ANY store mutation (sidebar toggle, unrelated workflow rename, parameter save on another node), which defeats `React.memo` + `nodePropsEqual` on the canvas. Setters are stable refs from Zustand — single-field selectors are the cheapest read. Audited and converted across the canvas + parameter-panel hot paths (every node component, `Dashboard.tsx`, `useDragVariable`, `useParameterPanel`, `useReactFlowNodes`, `useWorkflowManagement`, `InputSection`, `MiddleSection`, `OutputPanel`, `ParameterRenderer`, `ParameterPanel`).
 - A list of server records (`workflows`, `nodeParameters`, `userSettings`, `credentialCatalogue`, `userSkills`, node output schemas) lives in TanStack Query. Never duplicate it in Zustand. Phase-1 follow-up commit `c3a7aa4` removed `savedWorkflows` from `useAppStore` for exactly this reason; Wave 3 commit `7706afb` did the same for `userSkills` in MasterSkillEditor.
 - Imperative WebSocket request/response inside a component (`useEffect` + `sendRequest` + `setState`) is a code smell — wrap it in a `useQuery` hook. Inline the hook at the top of the consuming file when there's exactly one consumer (Wave 2/3 colocation rule); promote to `client/src/hooks/` when a second consumer appears. Phase-2 commit `b2b6fba` did this for `useParameterPanel` and `useOnboarding`; Wave 3 commits `2c5f227` / `7706afb` / `327f792` followed the same pattern inline inside MiddleSection / MasterSkillEditor / InputSection.
 - After a mutation, **invalidate the corresponding query key**, don't manually patch a Zustand list or call a local refetch helper. Mutations that need it from non-React code use the `queryClient` singleton at [client/src/lib/queryClient.ts](../client/src/lib/queryClient.ts).
@@ -595,7 +592,7 @@ The DIY widget registry (RHF + zod + a tester+rank dispatch) is modeled on n8n's
 | File | When to use |
 |---|---|
 | [client/src/components/ui/action-button.tsx](../client/src/components/ui/action-button.tsx) | Colored "soft" toolbar button (Run / Save / Cancel / Reset / Stop). One semantic `intent` prop (`run | stop | save | config | secret | tools`) drives bg / border / text / hover against the matching `--action-X` quartet (`-soft`, `-hover`, `-border`, base) via static Tailwind classes — no opacity arithmetic. Disabled state is the shadcn-idiomatic `disabled:opacity-50` on the base class (one rule, all intents). Replaces the `actionButtonStyle(color, isDisabled)` style helper that was copy-pasted across 4 files. The credential-modal panels (`OAuthConnect`, `EmailPanel`, `QrPairingPanel`, `ActionBar`) and the skill / tool-schema editors all consume `<ActionButton>` directly; their `ActionDef` records carry an `intent` key, never a free-form colour. |
-| [client/src/styles/canvasAnimations.ts](../client/src/styles/canvasAnimations.ts) | Canvas-wide CSS injected once into Dashboard's `<style>` tag. Three named groups (`KEYFRAMES`, `edgeStatusStyles`, `nodeStatusStyles`) for the React Flow edge/node status visuals -- adding a new keyframe or status class is a single-file change. Light/dark distinction is encoded entirely in the `colors` arg coming from `theme.ts` -- `buildCanvasStyles(colors)` is single-arg with zero hardcoded hexes, and `CanvasStatusColors` carries the full set (`edgeDefault | edgeSelected | edgeExecuting | edgeCompleted | edgeError | edgePending | edgeMemoryActive | edgeToolActive`). The `nodeGlow` keyframe consumes scoped `--node-glow` / `--node-glow-soft` vars so one keyframe serves both themes. |
+| [client/src/styles/canvasAnimations.ts](../client/src/styles/canvasAnimations.ts) | Canvas-wide CSS injected once into Dashboard's `<style>` tag — adding a new keyframe or status class is a single-file change. Fully static since the design-handoff edge migration: `buildCanvasStyles()` takes no arguments; every colour/width/dash is a theme token (`--edge-stroke`, `--edge-stroke-width{,-active,-done}`, `--edge-dash{,-active}` from `themes/base.css`, plus semantic tokens for the status classes `selected/executing/completed/error/pending/memory-active/tool-active/skill-active`). Resting edges are pale-neutral dashed orthogonal step edges; the in-progress `.react-flow__connection-path` shares the resting rule. The old `CanvasStatusColors` per-theme hex interface was deleted — add a token, never a colour parameter. |
 | [client/src/components/ui/alert-dialog.tsx](../client/src/components/ui/alert-dialog.tsx) | Confirmation / destructive-action modals. **Never hand-roll a `position: fixed; background: rgba(0,0,0,0.5)` backdrop** — use `<AlertDialog open onOpenChange>` with `AlertDialogHeader` / `AlertDialogDescription` / `AlertDialogFooter`. Focus trap, escape-to-close, and `role="alertdialog"` come from Radix. MiddleSection Clear Memory + Reset Skill dialogs are the canonical consumers (Wave 3 commit `61bf23c`). |
 | [client/src/components/ui/sonner.tsx](../client/src/components/ui/sonner.tsx) | The `<Toaster />` mount — call `import { toast } from 'sonner'` directly at use sites; do not wrap. |
 | [client/src/components/ui/Modal.tsx](../client/src/components/ui/Modal.tsx) | Composition primitive on top of shadcn `<Dialog>`. Owns the recurring "title bar with centered headerActions and a close button + size-constrained content panel" 8 panels share. Not an antd facade. For destructive confirmations prefer `AlertDialog` above. |

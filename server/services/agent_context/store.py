@@ -33,8 +33,8 @@ from models.agent_context import (
     ContextThreadKind,
 )
 from models.database import RuntimeMutation
+from services.agent_context.listeners import notify_context_commit
 from services.llm.protocol import (
-    MESSAGE_WIRE_VERSION,
     message_from_wire,
     message_to_wire,
 )
@@ -385,7 +385,7 @@ class AgentContextStore:
         *,
         event_type: str,
         operation_id: str,
-        message_wire_v2: Optional[dict[str, Any]] = None,
+        message_wire: Optional[dict[str, Any]] = None,
         payload_ref: Optional[str] = None,
         provider: Optional[str] = None,
         expected_revision: Optional[int] = None,
@@ -398,7 +398,7 @@ class AgentContextStore:
             _validate_identity("payload_ref", payload_ref, 512)
         if provider is not None:
             _validate_identity("provider", provider, 100)
-        wire = _validate_message_wire(message_wire_v2)
+        wire = _validate_message_wire(message_wire)
 
         for _ in range(_MAX_CAS_ATTEMPTS):
             async with self._session() as session:
@@ -417,7 +417,7 @@ class AgentContextStore:
                     _assert_idempotent_event_reuse(
                         existing,
                         event_type=event_type,
-                        message_wire_v2=wire,
+                        message_wire=wire,
                         payload_ref=payload_ref,
                         provider=provider,
                     )
@@ -442,7 +442,7 @@ class AgentContextStore:
                     sequence=sequence,
                     epoch=thread.epoch,
                     event_type=event_type,
-                    message_wire_v2=wire,
+                    message_wire=wire,
                     payload_ref=payload_ref,
                     operation_id=operation_id,
                     provider=provider,
@@ -454,7 +454,7 @@ class AgentContextStore:
                     epoch=thread.epoch,
                     sequence=sequence,
                     event_type=event_type,
-                    message_wire_v2=deepcopy(wire),
+                    message_wire=deepcopy(wire),
                     payload_ref=payload_ref,
                     operation_id=operation_id,
                     provider=provider,
@@ -507,6 +507,16 @@ class AgentContextStore:
                     await session.rollback()
                     continue
                 updated = await self._load_ref(ref)
+                # After commit and after the reload, so the notification can
+                # never be observed ahead of the state it announces. The
+                # idempotent-replay path above returns before reaching here:
+                # a replay is not a state change.
+                await notify_context_commit(
+                    updated,
+                    provider=provider or thread.provider,
+                    active_token_count=int(thread.active_token_count or 0),
+                    sequence=sequence,
+                )
                 return AgentContextAppendResult(
                     ref=updated,
                     event=_to_event(event),
@@ -582,7 +592,13 @@ class AgentContextStore:
                 except IntegrityError:
                     await session.rollback()
                     continue
-                return await self._load_ref(ref)
+                updated = await self._load_ref(ref)
+                await notify_context_commit(
+                    updated,
+                    provider=thread.provider,
+                    active_token_count=active_token_count,
+                )
+                return updated
         raise RevisionConflictError("context_pressure_update_conflict")
 
     async def prepare_compaction(
@@ -951,7 +967,7 @@ class AgentContextStore:
                     sequence=next_sequence,
                     epoch=next_epoch,
                     event_type="provider_handoff",
-                    message_wire_v2=None,
+                    message_wire=None,
                     payload_ref=handoff_payload_ref,
                     operation_id=handoff_operation,
                     provider=provider,
@@ -1504,7 +1520,7 @@ def _assert_idempotent_event_reuse(
     existing: AgentContextEventRecord,
     *,
     event_type: str,
-    message_wire_v2: Optional[dict[str, Any]],
+    message_wire: Optional[dict[str, Any]],
     payload_ref: Optional[str],
     provider: Optional[str],
 ) -> None:
@@ -1515,7 +1531,7 @@ def _assert_idempotent_event_reuse(
         sequence=existing.sequence,
         epoch=existing.epoch,
         event_type=event_type,
-        message_wire_v2=message_wire_v2,
+        message_wire=message_wire,
         payload_ref=payload_ref,
         operation_id=existing.operation_id,
         provider=provider,
@@ -1523,7 +1539,7 @@ def _assert_idempotent_event_reuse(
     )
     if (
         existing.event_type != event_type
-        or existing.message_wire_v2 != message_wire_v2
+        or existing.message_wire != message_wire
         or existing.payload_ref != payload_ref
         or existing.provider != provider
         or stored_hash != existing.payload_hash
@@ -1600,13 +1616,9 @@ def _validate_message_wire(
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise TypeError("message_wire_v2 must be a JSON object")
-    if value.get("version") != MESSAGE_WIRE_VERSION:
-        raise ValueError(
-            f"Context requires MessageWireV2 version {MESSAGE_WIRE_VERSION}"
-        )
-    # Round-tripping through the existing native codec enforces JSON-safe
-    # provider state and preserves ordered blocks/tool calls.
+        raise TypeError("message_wire must be a JSON object")
+    # Round-tripping through the codec enforces JSON-safe provider state,
+    # preserves ordered blocks/tool calls, and rejects shapes with no role.
     return dict(message_to_wire(message_from_wire(value)))
 
 
@@ -1615,7 +1627,7 @@ def _event_hash(
     sequence: int,
     epoch: int,
     event_type: str,
-    message_wire_v2: Optional[dict[str, Any]],
+    message_wire: Optional[dict[str, Any]],
     payload_ref: Optional[str],
     operation_id: str,
     provider: Optional[str],
@@ -1625,7 +1637,7 @@ def _event_hash(
         "sequence": sequence,
         "epoch": epoch,
         "event_type": event_type,
-        "message_wire_v2": message_wire_v2,
+        "message_wire": message_wire,
         "payload_ref": payload_ref,
         "operation_id": operation_id,
         "provider": provider,
@@ -1639,7 +1651,7 @@ def _event_record_hash(row: AgentContextEventRecord) -> str:
         sequence=row.sequence,
         epoch=row.epoch,
         event_type=row.event_type,
-        message_wire_v2=row.message_wire_v2,
+        message_wire=row.message_wire,
         payload_ref=row.payload_ref,
         operation_id=row.operation_id,
         provider=row.provider,
@@ -1811,7 +1823,7 @@ def _to_event(row: AgentContextEventRecord) -> AgentContextEvent:
     return AgentContextEvent(
         sequence=row.sequence,
         event_type=row.event_type,
-        message_wire_v2=deepcopy(row.message_wire_v2),
+        message_wire=deepcopy(row.message_wire),
         payload_ref=row.payload_ref,
         operation_id=row.operation_id,
         provider=row.provider,

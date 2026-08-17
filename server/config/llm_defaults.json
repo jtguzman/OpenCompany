@@ -14,6 +14,7 @@
 
   "providers": {
     "openai": {
+      "display_name": "OpenAI",
       "default_model": "gpt-5.6-sol",
       "popular_models": ["gpt-5.6-sol", "gpt-5.6-sol-pro", "gpt-5.6-terra", "gpt-5.6-terra-pro", "gpt-5.6-luna", "gpt-5.6-luna-pro", "gpt-5.5", "gpt-5.4", "gpt-4.1"],
       "detection_patterns": ["gpt", "openai", "o1", "o3", "o4"],
@@ -21,6 +22,10 @@
       "models_endpoint": "https://api.openai.com/v1/models",
       "api_key_param": "openai_api_key",
       "max_tokens_param": "max_tokens",
+      "vision": {
+        "enabled": false,
+        "_note": "Native image input is emitted only when enabled is true; unknown/absent providers get a text placeholder instead (a rejected image block would poison journaled history). Read by services/llm/media.py provider_supports_vision. False here until the OpenAI request encoder renders image blocks (Responses input_image in function_call_output; Chat Completions hoist-to-user-turn) — flipping it early would hydrate bytes the encoder silently drops. Anthropic ships the first encoder; text-only providers keep the visionAnalyze delegate tool."
+      },
       "_models_note": "GPT-5.6 family (sol/terra/luna) GA 2026-07-09. gpt-5.5 / gpt-5.4 remain GA as legacy tiers. Dropped: gpt-5.2 (new requests blocked 2026-06-30), o3 (API shutdown 2026-12-11), o4-mini (API shutdown 2026-10-23) — they fall back to _default constraints if still selected before shutdown.",
       "max_output_tokens": {
         "gpt-5.6-sol": 128000,
@@ -52,6 +57,7 @@
       "temperature_range": [0.0, 2.0]
     },
     "anthropic": {
+      "display_name": "Anthropic",
       "default_model": "claude-opus-5",
       "popular_models": ["claude-opus-5", "claude-fable-5", "claude-sonnet-5", "claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6"],
       "_models_note": "claude-opus-5 (released 2026-07-24) is the new Opus flagship and default: near-Fable-5 intelligence at Opus pricing ($5/$25 — half of Fable 5), 1M context, 128K max output. The claude-opus-5-fast variant (2x pricing) is deliberately not curated here; select it via the live dropdown if needed.",
@@ -60,6 +66,9 @@
       "models_endpoint": "https://api.anthropic.com/v1/models",
       "api_key_param": "anthropic_api_key",
       "max_tokens_param": "max_tokens",
+      "vision": {
+        "enabled": true
+      },
       "max_output_tokens": {
         "claude-opus-5": 128000,
         "claude-fable-5": 128000,
@@ -101,6 +110,7 @@
       "temperature_range": [0.0, 1.0]
     },
     "gemini": {
+      "display_name": "Gemini",
       "default_model": "gemini-3.6-flash",
       "popular_models": ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
       "detection_patterns": ["gemini", "google", "gemma"],
@@ -109,6 +119,10 @@
       "models_endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
       "api_key_param": "google_api_key",
       "max_tokens_param": "max_output_tokens",
+      "vision": {
+        "enabled": false,
+        "_note": "See openai.vision._note — off until the Gemini encoder renders inline_data parts beside function_response."
+      },
       "_models_note": "Real (concrete) model names only — no -latest rolling aliases. The curated list (max_output_tokens keys) serves BOTH the Gemini Developer API (AIza keys) and Vertex / Agent Platform (AQ. keys); gemini-* entries live-verified on both endpoints (2026-06-12). Vertex 404s on -latest aliases and its models.list rejects API keys, which is why the dropdown is curated instead of live-fetched. Gemma exception: gemma-4-31b-it + gemma-4-26b-a4b-it are served ONLY on the Developer API (free tier, ai.google.dev/gemma/docs/core/gemma_on_gemini_api, verified 2026-07-11) — Vertex keys must not see them, hence vertex_incompatible_models below. Gemma 4 supports systemInstruction and function calling natively (unlike the gemma-3 era); max output is undocumented, so the curated 8192 is a conservative fallback (registry cache wins when present).",
       "max_output_tokens": {
         "gemini-3.6-flash": 65536,
@@ -148,6 +162,7 @@
       "incompatible_models": ["antigravity-preview-05-2026"]
     },
     "openrouter": {
+      "display_name": "OpenRouter",
       "default_model": "anthropic/claude-sonnet-5",
       "popular_models": ["anthropic/claude-sonnet-5", "openai/gpt-5.6-terra", "openai/gpt-5.6-sol", "google/gemini-3.5-flash", "moonshotai/kimi-k3", "x-ai/grok-4.20"],
       "detection_patterns": ["openrouter"],
@@ -165,6 +180,7 @@
       "temperature_range": [0.0, 2.0]
     },
     "groq": {
+      "display_name": "Groq",
       "default_model": "openai/gpt-oss-120b",
       "popular_models": [],
       "_popular_note": "Empty per the 1M-context policy — no Groq-served model reaches 1M (all top out at 131072). Models remain reachable via live fetch_models.",
@@ -195,6 +211,7 @@
       "temperature_range": [0.0, 2.0]
     },
     "cerebras": {
+      "display_name": "Cerebras",
       "default_model": "gpt-oss-120b",
       "popular_models": [],
       "_popular_note": "Empty per the 1M-context policy — no Cerebras model reaches 1M (all 131072). Models remain reachable via live fetch_models.",
@@ -221,6 +238,7 @@
       "temperature_range": [0.0, 1.5]
     },
     "xai": {
+      "display_name": "xAI",
       "default_model": "grok-4.20",
       "popular_models": ["grok-4.20", "grok-4.20-multi-agent", "grok-4.3"],
       "_popular_note": "grok-4.5 (flagship, released 2026-07-08) and grok-3 excluded per the 1M-context policy (500K / 131072); reachable via live fetch_models. Default stays grok-4.20 (2M) so the default is selectable from the global list.",
@@ -248,6 +266,7 @@
       "temperature_range": [0.0, 2.0]
     },
     "deepseek": {
+      "display_name": "DeepSeek",
       "default_model": "deepseek-v4-flash",
       "popular_models": ["deepseek-v4-flash", "deepseek-v4-pro"],
       "_popular_note": "deepseek-chat / deepseek-reasoner dropped from the global list per the 1M-context policy (131072); reachable via live fetch_models.",
@@ -275,6 +294,7 @@
       "temperature_range": [0.0, 2.0]
     },
     "kimi": {
+      "display_name": "Kimi",
       "default_model": "kimi-k3",
       "popular_models": ["kimi-k3"],
       "_popular_note": "Only kimi-k3 meets the 1M-context policy (k2.x are 262144); k2.x remain reachable via live fetch_models.",
@@ -304,6 +324,7 @@
       "temperature_range": [0.0, 1.0]
     },
     "mistral": {
+      "display_name": "Mistral",
       "default_model": "mistral-large-latest",
       "popular_models": [],
       "_popular_note": "Empty per the 1M-context policy — Mistral tops out at 262144 (large/medium). Models remain reachable via live fetch_models.",
@@ -330,6 +351,7 @@
       "temperature_range": [0.0, 1.5]
     },
     "sarvam": {
+      "display_name": "Sarvam AI",
       "default_model": "sarvam-105b",
       "popular_models": [],
       "_popular_note": "Empty per the 1M-context policy — sarvam-105b tops out at 131072. Both models stay reachable via the per-node dropdown (fetch_models returns the curated list) and via the global selector, which falls back to the max_output_tokens keys when popular_models is empty.",
@@ -360,6 +382,7 @@
     },
 
     "ollama": {
+      "display_name": "Ollama",
       "_description": "Local Ollama server (OpenAI-compatible /v1). No `default_model` because the dropdown should reflect the user's actually-pulled models — fetch_models hits the user's saved {provider}_proxy URL and returns whatever Ollama reports; when the server is offline we want an empty list (a 'start your server' cue), not a placeholder name the user almost certainly doesn't have.",
       "detection_patterns": ["ollama"],
       "base_url": "http://localhost:11434/v1",
@@ -372,6 +395,7 @@
     },
 
     "lmstudio": {
+      "display_name": "LM Studio",
       "_description": "Local LM Studio server (pure OpenAI-compatible). Same no-default-model rule as ollama — the dropdown reflects what the user has loaded in LM Studio, not a fake placeholder.",
       "detection_patterns": ["lmstudio", "lm_studio", "lm-studio"],
       "base_url": "http://localhost:1234/v1",
