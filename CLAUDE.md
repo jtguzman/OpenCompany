@@ -1,11 +1,16 @@
-# OpenCompany - Claude Documentation
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-This is a React Flow-based workflow automation platform implementing n8n-inspired architectural patterns. The project has undergone a comprehensive refactoring to implement modern INodeProperties interface system with full TypeScript compliance and code cleanup.
+
+OpenCompany — a React Flow-based workflow automation platform implementing n8n-inspired architectural patterns. Hybrid stack: Python FastAPI backend (plugin-based nodes, Temporal execution) + React 19/TypeScript frontend + a Node.js subprocess for JS/TS code execution, all supervised by a Python CLI (`company`).
 
 ## Documentation Reference
 
 **Always refer to these documentation files for detailed guides.** The compact list below is the index; **[Documentation Index](./docs-internal/documentation_index.md)** carries the full annotated table (one paragraph of load-bearing detail per document) and is the place to look before opening any of them.
+
+**Start with [CONTRIBUTING.md](./CONTRIBUTING.md) for any "add a new X" task.** It holds the repository map and the step-by-step recipes — add a workflow node, an LLM provider, a dual-purpose tool, a specialized agent, a skill, an event source / trigger, a CLI-managed-auth service, an OAuth service, a credential provider, a theme — each listing the small set of cross-cutting edits still required. Do not re-derive those steps from the code.
 
 **Architecture & contracts**
 - [Schema Source of Truth RFC](./docs-internal/schema_source_of_truth_rfc.md) — backend is SSOT for node schemas / visuals / handlers / icons
@@ -176,7 +181,7 @@ Automatic fallback with no code branching at call sites: production (Docker) `Re
 
 ## Codebase Summary
 - **Hybrid architecture**: Python (FastAPI + Pydantic plugins) + React/TypeScript frontend + Node.js subprocess for JS/TS code execution.
-- **Backend NodeSpec is the single source of truth.** Plugins live in [`server/nodes/<group>/<name>.py`](./server/nodes/) and auto-register via `BaseNode.__init_subclass__`. Authoritative node count is whatever globs out of `server/nodes/**/*.py` (excluding `_*.py` helpers and `__init__.py`); folders cover agent / model / android / google / whatsapp / twitter / telegram / social / email / search / scraper / document / code / filesystem / proxy / location / chat / text / scheduler / trigger / tool / utility / workflow / skill / browser / stripe / vercel / github / cloudflare / gcloud / sarvam.
+- **Backend NodeSpec is the single source of truth.** Plugins live in [`server/nodes/<group>/<name>.py`](./server/nodes/) and auto-register via `BaseNode.__init_subclass__`. Authoritative node count comes from the registry (see "Implemented Node Types" below), not from a glob. The plugin folders are: agent / android / browser / chat / cloudflare / code / context / document / email / filesystem / gcloud / github / google / location / microsoft / model / proxy / scheduler / scraper / search / skill / social / speech / stripe / telegram / text / tool / translate / trigger / twitter / utility / vercel / whatsapp / workflow. (`nodes/sarvam/` was retired into `speech/` + `translate/`; only `sarvamChatModel` under `nodes/model/` remains vendor-named.)
 - **WebSocket-first frontend-backend communication.** Authoritative handler count is the size of the `MESSAGE_HANDLERS` dict in [`server/routers/websocket.py`](./server/routers/websocket.py) plus plugin-registered handlers via `services.ws_handler_registry`. Don't hand-maintain the count in this doc — it drifts on every plugin add.
 - **Plugin-first architecture (Wave 11).** One file = one node. `services/handlers/` shrank from 12.8K → 1.1K LOC across 16 → 4 files. Live invariant total via `pytest --collect-only`.
 
@@ -201,9 +206,17 @@ Core types, node-system entry points, assets, UI components, AI chat-model compo
 
 ## Implemented Node Types
 
-> **Authoritative source: backend plugin registry.** Read the live total from `len(services.node_registry.NODE_METADATA)` — a bare `__init__.py` glob overcounts by also matching group packages. Do NOT maintain a per-node catalogue in this file; it drifts on every plugin add. The per-node "logic-flow" cards (handles / params / outputs / side-effects / edge-cases) live under [docs-internal/node-logic-flows/](./docs-internal/node-logic-flows/).
+> **Authoritative source: backend plugin registry.** Read the live total from `len(services.node_registry.NODE_METADATA)` — a bare `__init__.py` glob overcounts by also matching group packages. **You must `import nodes` first**: registration is an import side effect (`pkgutil.walk_packages` over `server/nodes/`), so importing `node_registry` alone reports `0`.
+>
+> ```bash
+> cd server && uv run python -c "import nodes, services.node_registry as r; print(len(r.NODE_METADATA))"   # 137 as of this writing
+> ```
+>
+> Do NOT maintain a per-node catalogue in this file; it drifts on every plugin add. The per-node "logic-flow" cards (handles / params / outputs / side-effects / edge-cases) live under [docs-internal/node-logic-flows/](./docs-internal/node-logic-flows/).
 
-Node groups (palette categories): agent, model, skill, tool, trigger, workflow, search, google, android, whatsapp, telegram, twitter, social, email, proxy, chat, scheduler, text, code, document, location, utility, browser, scraper, filesystem, stripe, vercel, github (palette group `vcs`), cloudflare and gcloud (palette group `deployment`), speech and translate (both palette group `language` — provider-abstracted `textToSpeech` / `speechToText` and `translateText` / `transliterateText` / `detectLanguage`; `nodes/sarvam/` was retired into them, and only `sarvamChatModel` under `nodes/model/` remains vendor-named).
+**Palette groups are declared in [`server/nodes/groups.py`](./server/nodes/groups.py) — that file is the SSOT, read it rather than trusting a list here.** Each `register_group(key=...)` sets the label, icon, color, and a `visibility` bucket (`normal` = simple-mode palette, `dev` = pro/dev mode only, `all`). The frontend renders section headers from `/api/schemas/nodes/groups`; there are no `CATEGORY_ICONS` / `labelMap` / `colorMap` tables left on the frontend.
+
+**A plugin's folder name is not necessarily its palette group.** Notable divergences: `stripe/` → `payments`; `github/` → `vcs`; `cloudflare/` + `gcloud/` + `vercel/` → `deployment`; `speech/` + `translate/` → `language` (provider-abstracted `textToSpeech` / `speechToText` and `translateText` / `transliterateText` / `detectLanguage`); `scraper/` also uses `api`. Groups `ai`, `service`, and `memory` have no matching folder at all.
 
 ## Backend Services
 
@@ -228,15 +241,21 @@ company clean        # Clean build artifacts
 company help         # Show all commands
 ```
 
-### npm Scripts
+### From-source development uses pnpm, NOT npm
+
+`scripts/preinstall.js` hard-fails any non-pnpm `install` while `pnpm-workspace.yaml` is present (source checkout); the npm path is only for the published global package. Install once with `npm install -g pnpm`.
+
 ```bash
-# Core (thin wrappers over the Python CLI)
-npm run start            # Start all services (python -m cli start)
-npm run stop             # Stop all services (python -m cli stop)
-npm run build            # Build for production (python -m cli build)
-npm run clean            # Clean build artifacts (python -m cli clean)
-npm run deploy           # Self-deploy to a cloud VM (python -m cli deploy)
+pnpm install             # install workspace deps (also runs `uv sync` for server/ via postinstall)
+pnpm run dev             # Vite HMR + backend; Temporal starts from the backend when TEMPORAL_ENABLED
+pnpm run start           # production-mode single-port run
+pnpm run stop            # stop all services
+pnpm run build           # production build
+pnpm run clean           # clean build artifacts
+pnpm run deploy          # self-deploy to a cloud VM
 ```
+
+The root scripts are thin wrappers over the Python CLI (`python -m cli <verb>`). **The Python environments are deliberately separate**: the root `pyproject.toml` sets `[tool.uv] managed = false`, so `uv sync` at the repo root is a no-op and no `<repo>/.venv` shadows the interpreter on PATH — the CLI depends on nothing in `server/` and stays installable on any Python ≥3.12. `server/` is the only uv-managed project (`server/.venv`, Python ≥3.11,<3.13); the CLI shells into it via `cli.run.uv_run` (`uv run --no-sync` with `cwd=server/`). `scripts/install.js` provisions both (`uv venv` + `uv sync` in `server/`, plus a separate `.cli-venv` editable install), which is why backend commands must run from `server/` and `cli/tests` must not.
 
 ### Cross-Platform Scripts
 Service orchestration lives in the Python CLI (`company start/dev/stop/build/clean/serve/daemon/deploy/docs/version` — see `cli/`). The `scripts/` directory retains only the npm install lifecycle helpers (`install.js`, `preinstall.js`, `postinstall.js`). `company start` is single-port: uvicorn serves API + WS + built SPA on the backend port (`SERVE_STATIC_CLIENT`, default on); the retired `scripts/serve-client.js` static server and its `:3000` frontend port are gone.
@@ -279,20 +298,70 @@ Tool nodes connect to an agent's `input-tools` handle and expose a schema the LL
 Config nodes (context, tools, models, skills, teammates) connect to a parent via `input-<type>` handles that are NOT `input-main`. The handle convention, the auto-derived `isConfigNode` uiHint (plugins in group `memory` or `tool` get it for free — never hand-declare it), input inheritance in the parameter panel, the filtering logic, and sub-node execution exclusion are in **[Config Node Architecture](./docs-internal/config_nodes.md)**.
 
 ## Testing & Validation
+
+**The verification gate is pytest + the root `typecheck` gate + eslint.** Ruff is configured (`[tool.ruff]`, `line-length = 140`, and it is in the server `dev` dependency group) but is deliberately **not** part of the gate — do not treat a ruff finding as a build failure. There is no `.pre-commit-config.yaml` in the tree.
+
+### Tests
+
+There are three independent test suites, matching the three CI jobs in `.github/workflows/predeploy.yml`:
+
 ```bash
-# Development server test
-curl -I http://localhost:${PYTHON_BACKEND_PORT:-5678}
+# Backend — 2,950+ tests. Run from server/ (uv-managed venv).
+cd server && uv run pytest                       # `-m 'not live'` is the default via addopts
+cd server && uv run pytest tests/ -v
+
+# Frontend (vitest)
+pnpm --filter react-flow-client run test         # what CI runs
+cd client && npm run test:watch                  # watch mode
+cd client && npm run test:coverage
+
+# CLI — run from the REPO ROOT, on the global interpreter (not server/.venv)
+python -m pytest cli/tests/ -v
+
+# Everything at once
+pnpm test                                        # backend + frontend (NOT cli/tests)
+```
+
+**Running a single test:**
+```bash
+cd server && uv run pytest tests/test_node_spec.py                      # one file
+cd server && uv run pytest tests/test_node_spec.py::test_name           # one test
+cd server && uv run pytest tests/nodes/test_email.py -k "attachment"    # by expression
+cd server && uv run pytest -m credentials                               # by marker
+cd client && npx vitest run src/hooks/__tests__/useApiKeys.test.ts      # one frontend file
+cd client && npx vitest run -t "renders the panel"                      # one frontend test
+```
+
+**Markers** (declared in `server/pyproject.toml`): `unit`, `node_contract`, `slow`, `credentials`, and `live`. **`live` tests call real LLM provider APIs and cost money** — they are deselected by default via `addopts = "-m 'not live'"`; opt in only deliberately with `pytest -m live`.
+
+**Import sanity / live plugin-count invariant** — this is the cheapest check that every plugin still imports:
+```bash
+cd server && uv run pytest --collect-only -q     # tail shows e.g. "2956/2992 tests collected (36 deselected)"
+```
+
+### Lint & typecheck
+
+```bash
+pnpm --filter react-flow-client run lint         # eslint (client/eslint.config.js) — part of the gate
+cd server && uv run ruff check .                 # available, NOT the gate (see above)
 
 # TypeScript validation — the gate is TypeScript 7 (native Go) at the REPO ROOT.
-pnpm run typecheck                              # root: tsc --noEmit -p client/tsconfig.json
-pnpm --filter react-flow-client run typecheck   # what CI runs; delegates up to the same gate
+pnpm run typecheck                               # root: tsc --noEmit -p client/tsconfig.json
+pnpm --filter react-flow-client run typecheck    # what CI runs; delegates up to the same gate
 # NOT `npx tsc --noEmit` — there is no root tsconfig.json.
 # NOT client's `typecheck:tsc` — that resolves typescript@5.9.3, kept only because
 # typescript-eslint's peer range excludes 6/7. It is a second opinion, not the gate.
 
-# Build verification
-npm run build
+pnpm run build                                   # build verification
+curl -I http://localhost:${PYTHON_BACKEND_PORT:-5678}   # dev server smoke check
 ```
+
+### Test conventions
+
+- **Contract invariants are automatic.** `server/tests/test_plugin_contract.py` and `test_node_spec.py` iterate every registered plugin and assert the declared shape, so a new node is covered the moment it imports. `test_plugin_self_containment.py` enforces the no-cross-plugin-imports rule; `test_skill_icon_resolution.py` asserts every skill resolves an icon; `test_no_raw_prints.py` enforces the no-emoji/no-raw-print rule.
+- **Behavioral tests** live per category in `server/tests/nodes/test_<category>.py` and are driven through `NodeTestHarness` ([server/tests/nodes/_harness.py](./server/tests/nodes/_harness.py)), which executes any node via `NodeExecutor` with mocked services and asserts the result envelope.
+- **Credential tests** follow the numbered-invariant style in [server/tests/credentials/README.md](./server/tests/credentials/README.md).
+- New backend uiHint flags need two edits: `INodeProperties.ts` plus the `known` set in `server/tests/test_node_spec.py`.
 
 ## Production Deployment
 
