@@ -678,6 +678,45 @@
    },
    "width": 80,
    "height": 86
+  },
+  {
+   "id": "oi:montyExecutor:A5",
+   "position": {
+    "x": 460,
+    "y": 1870
+   },
+   "type": "montyExecutor",
+   "data": {
+    "label": "A5 montyExecutor"
+   },
+   "width": 80,
+   "height": 86
+  },
+  {
+   "id": "oi:montyExecutor:A4",
+   "position": {
+    "x": 460,
+    "y": 1530
+   },
+   "type": "montyExecutor",
+   "data": {
+    "label": "A4 montyExecutor"
+   },
+   "width": 80,
+   "height": 86
+  },
+  {
+   "id": "oi:montyExecutor:A3",
+   "position": {
+    "x": 460,
+    "y": 1120
+   },
+   "type": "montyExecutor",
+   "data": {
+    "label": "A3 montyExecutor"
+   },
+   "width": 80,
+   "height": 86
   }
  ],
  "edges": [
@@ -1139,6 +1178,33 @@
    "targetHandle": "input-main",
    "animated": true,
    "type": "smoothstep"
+  },
+  {
+   "id": "e-oi:montyExecutor:A5-output-tool-oi:tool_agent:1-input-tools",
+   "source": "oi:montyExecutor:A5",
+   "sourceHandle": "output-tool",
+   "target": "oi:tool_agent:1",
+   "targetHandle": "input-tools",
+   "animated": true,
+   "type": "smoothstep"
+  },
+  {
+   "id": "e-oi:montyExecutor:A4-output-tool-oi:aiAgent:2-input-tools",
+   "source": "oi:montyExecutor:A4",
+   "sourceHandle": "output-tool",
+   "target": "oi:aiAgent:2",
+   "targetHandle": "input-tools",
+   "animated": true,
+   "type": "smoothstep"
+  },
+  {
+   "id": "e-oi:montyExecutor:A3-output-tool-oi:coding_agent:1-input-tools",
+   "source": "oi:montyExecutor:A3",
+   "sourceHandle": "output-tool",
+   "target": "oi:coding_agent:1",
+   "targetHandle": "input-tools",
+   "animated": true,
+   "type": "smoothstep"
   }
  ],
  "createdAt": "2026-08-10T00:00:00.000Z",
@@ -1304,6 +1370,10 @@
     "flujos-de-referencia": {
      "enabled": true,
      "instructions": ""
+    },
+    "sandbox-de-codigo-en-opencompany": {
+     "enabled": true,
+     "instructions": ""
     }
    },
    "label": "A3 Skills"
@@ -1365,6 +1435,10 @@
      "instructions": ""
     },
     "flujos-de-referencia": {
+     "enabled": true,
+     "instructions": ""
+    },
+    "sandbox-de-codigo-en-opencompany": {
      "enabled": true,
      "instructions": ""
     }
@@ -1440,6 +1514,10 @@
      "instructions": ""
     },
     "flujos-de-referencia": {
+     "enabled": true,
+     "instructions": ""
+    },
+    "sandbox-de-codigo-en-opencompany": {
      "enabled": true,
      "instructions": ""
     }
@@ -1542,6 +1620,15 @@
    "expression": "",
    "format": "json",
    "label": "Console"
+  },
+  "oi:montyExecutor:A5": {
+   "label": "A5 montyExecutor"
+  },
+  "oi:montyExecutor:A4": {
+   "label": "A4 montyExecutor"
+  },
+  "oi:montyExecutor:A3": {
+   "label": "A3 montyExecutor"
   }
  },
  "requirements": {
@@ -1757,6 +1844,10 @@
    },
    {
     "type": "console",
+    "version": 1
+   },
+   {
+    "type": "montyExecutor",
     "version": 1
    }
   ]

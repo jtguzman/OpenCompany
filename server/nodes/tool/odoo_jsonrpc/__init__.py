@@ -59,7 +59,7 @@ class OdooJsonRpcParams(BaseModel):
         default="",
         title="API Key",
         description="Odoo API key / password used for JSON-RPC login.",
-        json_schema_extra={"secret": True},
+        json_schema_extra={"secret": True, "password": True},
     )
     timeout: int = Field(
         default=60, ge=1, le=600, description="Request timeout in seconds."
@@ -80,6 +80,7 @@ OdooMethod = Literal[
     "write",
     "unlink",
     "fields_get",
+    "load",
     "call",
 ]
 
@@ -96,8 +97,13 @@ class OdooJsonRpcToolInput(BaseModel):
     method: OdooMethod = Field(
         description=(
             "Odoo ORM method: search_read/read/search/search_count/create/"
-            "write/unlink/fields_get, or 'call' for an arbitrary method named "
-            "in method_name."
+            "write/unlink/fields_get/load, or 'call' for an arbitrary method "
+            "named in method_name. For importing rows that carry an external "
+            "id, prefer 'load' over 'create': it is idempotent (re-running "
+            "updates instead of duplicating) and it registers the xmlid for "
+            "you. 'create' cannot register an xmlid, and writing one by hand "
+            "into ir.model.data fails on the second run with a duplicate-key "
+            "error."
         )
     )
     method_name: Optional[str] = Field(
@@ -113,7 +119,12 @@ class OdooJsonRpcToolInput(BaseModel):
     )
     fields: Optional[List[str]] = Field(
         default=None,
-        description="Field names to return for read/search_read.",
+        description=(
+            "Field names to return for read/search_read. For load, the column "
+            "header of the import: the first entry must be 'id' (the xmlid "
+            "column) and relational columns use the '<field>/id' form, e.g. "
+            "['id', 'name', 'categ_id/id']."
+        ),
     )
     ids: Optional[List[int]] = Field(
         default=None,
@@ -124,7 +135,9 @@ class OdooJsonRpcToolInput(BaseModel):
         description=(
             "Record payload for create (a dict) or write (a dict applied to "
             "ids). For create with line_ids use the Odoo (0,0,{...}) command "
-            "tuples."
+            "tuples. For load, the data rows: a list of rows, each row a list "
+            "of strings positionally matching 'fields'. Every value is a "
+            "string, including numbers and booleans ('1'/'0')."
         ),
     )
     limit: Optional[int] = Field(
@@ -160,6 +173,19 @@ class OdooJsonRpcToolInput(BaseModel):
             raise ValueError("create requires values")
         if self.method == "write" and self.values is None:
             raise ValueError("write requires values")
+        if self.method == "load":
+            if not self.fields:
+                raise ValueError("load requires fields (the import header, starting with 'id')")
+            if not isinstance(self.values, list) or not self.values:
+                raise ValueError("load requires values as a non-empty list of data rows")
+            if not all(isinstance(row, list) for row in self.values):
+                raise ValueError("load requires every row in values to be a list of strings")
+            width = len(self.fields)
+            bad = [i for i, row in enumerate(self.values) if len(row) != width]
+            if bad:
+                raise ValueError(
+                    f"load: rows {bad[:5]} do not have {width} values, one per entry in fields"
+                )
         return self
 
 
@@ -188,8 +214,11 @@ class OdooJsonRpcNode(ToolNode):
     tool_description = (
         "Query or write Odoo records over JSON-RPC. Choose model (e.g. "
         "product.product, res.partner, kardex.import.log) and method "
-        "(search_read/read/search/search_count/create/write/unlink/fields_get, "
-        "or call with method_name). Provide domain/fields/ids/values as needed. "
+        "(search_read/read/search/search_count/create/write/unlink/fields_get/"
+        "load, or call with method_name). Provide domain/fields/ids/values as "
+        "needed. To import rows that carry an external id use method='load' "
+        "with fields as the header (first entry 'id') and values as the data "
+        "rows — it is idempotent and registers xmlids, which create cannot. "
         "You never provide a URL, database, or credentials — they are fixed on "
         "the node. Returns {ok, result} or {ok:false, error}."
     )
@@ -297,6 +326,11 @@ class OdooJsonRpcNode(ToolNode):
             return base + ["unlink", [args.ids], kwargs]
         if args.method == "fields_get":
             return base + ["fields_get", args.args or [], kwargs]
+        if args.method == "load":
+            # load(fields, data) — the native importer. Transactional per call:
+            # one rejected row rolls the whole batch back, and the rejection is
+            # reported in result['messages'] with ok=True, not as an RPC error.
+            return base + ["load", [args.fields, args.values], kwargs]
         # Should be unreachable given the Literal.
         raise NodeUserError(f"Unsupported method: {args.method}")
 

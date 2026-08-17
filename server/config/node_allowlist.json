@@ -24,6 +24,7 @@
     "calculatorTool",
     "currentTimeTool",
     "writeTodos",
+    "montyExecutor",
 
     "httpRequest",
     "timer",
