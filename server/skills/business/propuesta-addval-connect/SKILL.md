@@ -1,6 +1,12 @@
 ---
 name: propuesta-addval-connect
 description: Genera propuestas comerciales de Addval Connect en el formato HTML de la casa a partir de una necesidad de negocio descrita en lenguaje libre, cubriendo implementaciones y configuraciones de Odoo, desarrollos a medida, integraciones, asesorías ERP, agentes de IA y soporte. Úsala SIEMPRE que aparezca una necesidad de cliente que haya que cotizar, presupuestar o proponer, aunque no se diga la palabra propuesta. Se activa con frases como "el cliente X necesita...", "cotiza esto", "arma un documento para...", "cuánto le cobramos a...", "prepara la OT", "hazme la propuesta de...", y también cuando se pida ajustar, reestructurar o versionar una propuesta existente. Incluye la elección entre modelo secuencial por hitos y modelo por sprints, la numeración de referencia, el calendario de pagos en UF y el Adendo Técnico.
+metadata:
+  author: addval
+  version: "1.0"
+  category: business
+  icon: "🧾"
+  color: "#bd93f9"
 ---
 
 # Propuesta Comercial — Addval Connect

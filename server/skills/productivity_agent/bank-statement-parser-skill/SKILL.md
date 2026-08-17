@@ -1,7 +1,7 @@
 ---
 name: bank-statement-parser-skill
 description: Parse bank statements from PDF or email attachments. Extracts transactions, balances, account info, and produces structured summaries. Supports multi-page PDFs, CSV export, and spending analysis.
-allowed-tools: "documentParser,msMail,fileModify,pythonExecutor,javascriptExecutor"
+allowed-tools: documentParser msMail fileModify pythonExecutor javascriptExecutor
 metadata:
   author: opencompany
   version: "1.0"
