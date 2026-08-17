@@ -10,7 +10,7 @@ import hashlib
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Type, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Sequence, Type, TYPE_CHECKING
 
 import json
 
@@ -269,6 +269,32 @@ def is_valid_message_content(content: Any) -> bool:
 
     # Other truthy content types
     return bool(content)
+
+
+def require_sendable_turn(prompt: Any, history: Sequence[Any], node_id: str) -> None:
+    """Refuse to invoke a provider with nothing for it to answer.
+
+    ``nodes/agent/_inline.prepare_agent_call`` already fills a blank
+    ``prompt`` from the connected input (message > text > content > str), so
+    a prompt still blank here means the node carries neither its own prompt
+    nor any upstream text. ``filter_empty_messages`` then drops that empty
+    user turn, and if the thread has no prior content either the provider
+    receives an empty message list — Anthropic answers ``400 messages: at
+    least one message is required`` (``user messages must have non-empty
+    content`` when the turn survives to the wire). The translated envelope
+    is "<provider> rejected the model request configuration", which names
+    neither the field nor the node, so the operator has no way back to the
+    empty Prompt parameter that caused it. Fail on the real cause instead.
+    """
+    if is_valid_message_content(prompt):
+        return
+    if any(getattr(m, "role", None) != "system" for m in history):
+        return
+    raise NodeUserError(
+        f"{node_id} has no prompt to send: the Prompt parameter is empty and the "
+        "connected input carried no text. Set Prompt, or connect a node whose "
+        "output has a message / text / content field."
+    )
 
 
 def _build_skill_system_prompt(skill_data: List[Dict[str, Any]], log_prefix: str = "[Agent]") -> tuple:
@@ -1392,6 +1418,7 @@ class AIService:
                 )
 
             # Add current user prompt
+            require_sendable_turn(prompt, initial_messages, node_id)
             initial_messages.append(NativeMessage(role="user", content=prompt))
 
             # Build tools if provided
@@ -2232,6 +2259,7 @@ class AIService:
                 )
 
             # Add current prompt
+            require_sendable_turn(prompt, messages, node_id)
             messages.append(NativeMessage(role="user", content=prompt))
 
             # Broadcast: Invoking LLM
