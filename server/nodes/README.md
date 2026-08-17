@@ -44,12 +44,18 @@ class AcmeOutput(BaseModel):
 
 
 # 4. The node. (Icon + color are NOT declared on the class.
-#    Icon: drop `icon.svg` into THIS plugin folder. For per-node-type
-#       icons in multi-node folders (telegram / whatsapp / stripe),
-#       use `icon_<nodeType>.svg`. The resolver picks per-node first,
-#       falling back to shared `icon.svg`. Emoji / `lobehub:<brand>`
-#       entries live in `server/nodes/visuals.json` for plugins
-#       without a co-located SVG.
+#    Icon: for anything with a recognisable brand, drop the mark as
+#       `icon.svg` in THIS folder, or `icon_<nodeType>.svg` per node
+#       type in a multi-node folder. Brand artwork is what makes a node
+#       identifiable at canvas size and depends on nothing external.
+#       For generic utility nodes, meta.json can instead reference a
+#       library glyph: `"icons": {"<nodeType>": "lucide:Send"}` (use
+#       the package's ExportName — `CheckCheck`, NOT `check-check`).
+#       That is the weaker option: the name can be renamed or removed
+#       upstream and the node then renders nothing, and the glyph is
+#       monochrome currentColor line art. A file always beats a
+#       meta.json ref, so don't ship both. `server/nodes/visuals.json`
+#       is the legacy central registry for plugins with neither.
 #    Color: create `meta.json` with `{"color": "#abcdef"}` in this folder.
 #    BaseNode._metadata_dict resolves both at registration time via the
 #    central handler at server/nodes/_visuals.py.)
@@ -108,8 +114,13 @@ android/     — Android device services
 google/      — Google Workspace (gmail / calendar / drive / sheets / …)
 twitter/     — Twitter/X (send / search / user / receive)
 telegram/    — Telegram bot (send / receive)
+discord/     — Discord bot (send / action / receive / interaction).
+               Multi-account: _accounts.py maps an account id onto the
+               session_id credential scope; nothing else knows about it.
 whatsapp/    — WhatsApp (send / db / receive)
-social/      — Unified social (send / receive)
+social/      — Unified social (send / receive). Names no platform: each
+               plugin registers a _social.py adapter and owns the mapping
+               onto its own parameter shape.
 email/       — IMAP/SMTP via Himalaya CLI
 search/      — Web search APIs (brave / serper / perplexity / duckduckgo)
 scraper/     — Apify / Crawlee
@@ -198,6 +209,7 @@ from ._credentials import TwitterCredential              # shared with 3 sibling
 | `nodes/location/` | `GoogleMapsCredential` (API key via `?key=`) | gmaps_create / gmaps_locations / gmaps_nearby_places |
 | `nodes/twitter/` | `TwitterCredential` (OAuth2 + PKCE) | twitter_send / _search / _user / _receive |
 | `nodes/telegram/` | `TelegramCredential` (bot token + owner chat id) | telegram_send / _receive |
+| `nodes/discord/` | `DiscordBotCredential` (bot token; overrides `inject()` because Discord uses `Bot <token>`, not the inherited `Bearer `) + `DiscordUserCredential` (OAuth2 user context, separate id so connecting a user never overwrites the bot) | discord_send / _action / _receive / _interaction |
 | `nodes/scraper/` | `ApifyCredential` (Bearer) | apify_actor |
 | `nodes/model/` | 13 LLM credential classes: 11 cloud (`OpenAI / Anthropic / Gemini / OpenRouter / Groq / Cerebras / DeepSeek / Kimi / Mistral / xAI / Sarvam`) plus Ollama / LM Studio | 12 chat models (xAI has no standalone chat-model node) **plus the 5 `nodes/sarvam/` service nodes**, which import `SarvamCredential` from here — one stored key serves Sarvam's OpenAI-compatible chat endpoint *and* its `api-subscription-key` REST APIs |
 | `nodes/search/` | `BraveSearch / Serper / Perplexity` inlined in each plugin file | single-use per plugin |

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 
 class TestAgentWorkflowDefinition:
     """``AgentWorkflow`` must be a valid Temporal workflow definition
@@ -115,6 +116,95 @@ class TestContextJournalIdentity:
             assert f"{{journal_operation_id}}" in source
             assert f"{{execution_id}}:iter" not in source
             assert f'f"{{execution_id}}{suffix}"' not in source
+
+    def test_journal_operation_ids_are_scoped_per_agent_node(self):
+        """Two agents on one Context node resolve to the same thread.
+
+        With a firing-scoped id alone they minted identical operation ids,
+        collided on (thread, operation_id) and had their turns discarded as
+        replays -- so one of the two agents was simply absent from the journal.
+        """
+        import inspect
+
+        from services.temporal.agent_workflow import AgentWorkflow
+
+        source = inspect.getsource(AgentWorkflow.run)
+        assert 'f"{journal_operation_id}:{agent_node_id}"' in source, (
+            "journal operation ids must include the agent node id, or "
+            "sibling agents sharing a Context node overwrite each other"
+        )
+
+    def test_resumed_run_continues_from_the_carried_transcript(self):
+        """continue_as_new carries the live transcript itself.
+
+        The journal-replay design reconstructed the conversation from the
+        Context store on resume, and its journal was missing every tool
+        result — so the replayed transcript ended on an assistant tool-call
+        turn with no answers, which every provider rejects (Gemini 400:
+        "Requests ending with a model turn are not supported"). Carrying
+        the messages directly makes that bug unrepresentable.
+        """
+        import inspect
+
+        from services.temporal.agent_workflow import AgentWorkflow
+
+        source = inspect.getsource(AgentWorkflow.run)
+        assert 'resume.get("transcript")' in source, (
+            "a resumed AgentWorkflow must continue from the transcript "
+            "carried across continue_as_new"
+        )
+        assert "agent.reconstruct_context_messages" not in source, (
+            "journal replay on resume was retired; the transcript crosses "
+            "the boundary directly"
+        )
+        carried_at = source.index('resume.get("transcript")')
+        loop_at = source.index("agent.execute_llm_step")
+        assert carried_at < loop_at, (
+            "the carried transcript must be adopted before the first LLM "
+            "step of the resumed run"
+        )
+
+    def test_rollover_guards_transcript_size(self):
+        """The CAN argument shares Temporal's 2 MiB payload error limit.
+
+        An oversized transcript must degrade to the opening prompt with a
+        warning instead of failing the rollover itself (which would kill
+        the run at exactly the moment it tried to survive).
+        """
+        import inspect
+
+        from services.temporal.agent_workflow import AgentWorkflow
+
+        source = inspect.getsource(AgentWorkflow.run)
+        assert "_CAN_TRANSCRIPT_MAX_BYTES" in source
+        guard_at = source.index("_CAN_TRANSCRIPT_MAX_BYTES")
+        can_at = source.index("workflow.continue_as_new(")
+        assert guard_at < can_at, (
+            "the size guard must run before continue_as_new is issued"
+        )
+
+    def test_workflow_never_claims_the_activity_rebuilds_the_request(self):
+        """Guards the comment, not the code.
+
+        Two comments used to state that the LLM activity reconstructs from the
+        store rather than from ``messages``. That was false, and it is exactly
+        the sentence a future reader would implement to reintroduce the
+        original bug.
+        """
+        import inspect
+
+        from services.temporal.agent_workflow import AgentWorkflow
+
+        source = inspect.getsource(AgentWorkflow.run)
+        for claim in (
+            "reconstructs\n",
+            "source of truth for the transcript",
+            "rather than from `messages`",
+        ):
+            assert claim not in source, (
+                f"stale claim {claim!r} in AgentWorkflow.run -- the activity "
+                f"always builds its request from `messages`"
+            )
 
     def test_llm_step_has_a_single_implementation(self):
         """A Context node observes execution; it must not steer it.
@@ -326,7 +416,7 @@ class TestContextJournalIdentity:
         create_children = source.index("asyncio.create_task(", gather)
         ordered_loop = source.index("for call_index, call in enumerate(calls):", create_children)
         ordered_await = source.index(
-            "await task_manager_delegation_tasks[call_index]", ordered_loop
+            "await task_manager_delegation_tasks.pop(call_index)", ordered_loop
         )
         assert start_activity < gather < create_children < ordered_loop < ordered_await
         assert "task_manager_preflight_results[call_index]" in source
@@ -351,30 +441,28 @@ class TestAgentActivities:
         defn = getattr(persist_agent_turn, "__temporal_activity_definition")
         assert defn.name == "agent.persist_turn"
 
-    def test_compact_agent_memory_registered(self):
-        from services.temporal.agent_activities import compact_agent_memory
+    def test_compact_context_registered(self):
+        from services.temporal.agent_activities import compact_context
 
-        defn = getattr(compact_agent_memory, "__temporal_activity_definition")
-        assert defn.name == "agent.compact_memory"
+        defn = getattr(compact_context, "__temporal_activity_definition")
+        assert defn.name == "agent.compact_context"
 
     def test_collect_returns_all_agent_activities(self):
-        """Each successive sprint added one F4.B agent activity:
-        infra (3) → per-agent-wiring +prepare_payload (4) → CloudEvents
-        cleanup +broadcast_progress (5) → +store_output (6) →
-        +refresh_tools (7) + durable delegation lifecycle/coordinator (13). All must register so the AgentWorkflow loop
-        can schedule them by name."""
+        """Every activity the AgentWorkflow loop schedules by name must
+        register here. The single-standard cleanup retired the journal
+        replay surface (reconstruct_context_messages / append_context /
+        compact_memory) — the transcript now crosses continue_as_new
+        directly and compaction summarizes the live conversation."""
         from services.temporal.agent_activities import collect_agent_activities
 
         activities = collect_agent_activities()
         names = sorted(getattr(a, "__temporal_activity_definition").name for a in activities)
         assert names == [
             "agent.acquire_subagent_permit",
-            "agent.append_context",
             "agent.begin_delegation",
             "agent.broadcast_progress",
             "agent.cancel_delegation",
             "agent.compact_context",
-            "agent.compact_memory",
             "agent.execute_llm_step",
             "agent.finalize_team",
             "agent.finish_delegation",
@@ -1083,18 +1171,43 @@ class TestAgentContinueAsNew:
     """The agent loop carries a transcript and a growing tool list, so it
     must roll over before Temporal's ~51,200-event hard terminate."""
 
-    def test_rollover_exists_and_is_bounded(self):
+    def test_rollover_exists_and_carries_the_essentials(self):
         import inspect
 
         from services.temporal.agent_workflow import AgentWorkflow
 
         source = inspect.getsource(AgentWorkflow.run)
         assert "workflow.continue_as_new(" in source
-        # Only references and counters cross the boundary. Carrying the
-        # transcript would defeat the rollover it is meant to enable.
-        carried = source[source.index("_RESUME_MARKER:") :][:600]
-        for forbidden in ('"messages"', '"tools"', '"assistant_message"'):
-            assert forbidden not in carried, f"{forbidden} must not cross a rollover"
+        # The transcript, usage totals, refs and counters cross the
+        # boundary. The transcript is size-guarded (see
+        # test_rollover_guards_transcript_size) so the CAN argument stays
+        # under Temporal's payload error limit.
+        carried = source[source.index("_RESUME_MARKER:") :][:700]
+        for required in (
+            '"transcript"',
+            '"usage"',
+            '"context_usage"',
+            '"iteration"',
+            '"execution_id"',
+            '"context_ref"',
+        ):
+            assert required in carried, f"{required} must cross the rollover"
+
+    def test_rollover_is_not_gated_on_a_context_node(self):
+        """Every agent must roll over under history pressure.
+
+        The journal-replay design gated the rollover on ``context_ref``,
+        so an agent without a Context node grew until Temporal's hard
+        history terminate. With the transcript carried directly there is
+        no reason to require a Context node.
+        """
+        import inspect
+
+        from services.temporal.agent_workflow import AgentWorkflow
+
+        source = inspect.getsource(AgentWorkflow.run)
+        assert "if _history_pressure(_AGENT_HISTORY_SOFT_CAP):" in source
+        assert "if context_ref and _history_pressure" not in source
 
     def test_execution_id_survives_the_rollover(self):
         """run_id changes on continue-as-new.
