@@ -148,6 +148,20 @@ async def run_native_llm_step(
     prepared = await hydrate_image_blocks(
         filter_empty_messages(messages), provider=provider, model=model
     )
+    # Every provider rejects a request whose message list is empty once the
+    # system prompt is lifted out of it (Anthropic: ``400 messages: at least
+    # one message is required``), and the translated envelope names no field.
+    # Reaching here with nothing left means the caller assembled a turn that
+    # was entirely empty content — say the agent's Prompt parameter was blank
+    # and no upstream node produced text. Name that instead of the 400.
+    if not any(m.role != "system" for m in prepared):
+        from services.plugin import NodeUserError
+
+        raise NodeUserError(
+            "No message content to send to the model: every message was empty "
+            "after filtering. Check the agent's Prompt parameter and the output "
+            "of the node feeding it."
+        )
     attempts = max(0, int(explicit_max_retries)) + 1
     for attempt in range(attempts):
         try:

@@ -127,6 +127,12 @@ class ChatUnifier:
                 status_code=error.status_code,
                 provider_code=error.provider_code,
                 request_id=error.request_id,
+                # The provider's own text, which the user-facing envelope
+                # deliberately drops ("<provider> rejected the model request
+                # configuration" names no field). Without it, an INVALID_REQUEST
+                # is undiagnosable from logs alone. Error bodies describe the
+                # rejected field; they never echo the API key.
+                detail=(error.message or "")[:500],
             )
             raise NodeUserError(error.user_message) from error
         except (ValueError, TypeError, OSError) as e:
