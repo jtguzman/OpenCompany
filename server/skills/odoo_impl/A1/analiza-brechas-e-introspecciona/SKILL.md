@@ -94,6 +94,33 @@ nada que clasificar con confianza.
 `02-instancia/modulos-instalados.json`: la lista plana de `name` instalados. Los dos archivos por
 separado porque el segundo se consulta mucho más seguido y es mucho más chico.
 
+### `02-instancia/capacidades-instancia.json` — lo que esta instancia permite
+
+Tercer archivo, y el más chico de los tres. Tú lo **creas**; A5 lo **acumula** durante la carga. Es la
+memoria de lo que ya se probó contra *esta* instancia, para que ninguna corrida vuelva a descubrirlo:
+
+```json
+{
+  "instancia": {"host_alias": "ecominera-staging", "odoo_version": "19.0", "actualizado": "2026-08-10"},
+  "metodos_bloqueados": [
+    {"llamada": "ir.module.module.get_module_info", "mensaje": "cannot be called remotely", "visto": "2026-08-10"}
+  ],
+  "remapeos_confirmados": [],
+  "campos_inexistentes": [],
+  "lote_optimo": null
+}
+```
+
+Al introspeccionar, llénalo con lo que ya sabes de esta instancia: la versión, y cualquier método que
+te haya devuelto `cannot be called remotely` (`E520`). `remapeos_confirmados`, `campos_inexistentes` y
+`lote_optimo` los escribe A5; tú los dejas vacíos, no los omitas — un archivo con las cuatro claves
+presentes se puede leer sin defensas.
+
+**Es un registro de hechos de esta instancia, no una regla general.** No escribas en él nada que no
+hayas verificado contra la instancia en esta corrida, y no lo uses para guardar criterio (eso va a
+`01-analisis/preguntas-abiertas.md`). Si algo de acá resulta cierto en varios proyectos, quien lo
+promueve a una skill compartida es una persona, no el pipeline.
+
 ## Paso 3 — Clasificar las brechas
 
 Una fila de `01-analisis/matriz-brechas.csv` por HU. La clasificación es la decisión de A1 y determina
@@ -172,7 +199,8 @@ regeneración completa de plantillas.
   "rutas": {
     "matriz_brechas": "01-analisis/matriz-brechas.csv",
     "introspeccion": "02-instancia/introspeccion.json",
-    "modulos": "02-instancia/modulos-instalados.json"
+    "modulos": "02-instancia/modulos-instalados.json",
+    "capacidades": "02-instancia/capacidades-instancia.json"
   },
   "pendientes": [
     {"id": "P-001", "origen": "A1", "motivo": "modulo_faltante",

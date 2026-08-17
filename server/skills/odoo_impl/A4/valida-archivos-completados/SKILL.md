@@ -4,7 +4,7 @@ description: >-
   Runbook completo del Agente A4: valida los archivos que el consultor devolvió en 06-completadas/
   (estructura, obligatorios, formatos, catálogos, xmlids, referencias y orden) y produce el informe de
   errores por archivo. Ejecuta los pasos en orden y no vuelvas al Coordinador entre ellos.
-allowed-tools: odoo_jsonrpc file_read file_modify fs_search javascript_code
+allowed-tools: odoo_jsonrpc file_read file_modify fs_search sandboxed_python javascript_code
 metadata:
   agente: A4
   tipo: DET
@@ -26,8 +26,10 @@ Tu principio de diseño es uno: **detectar TODOS los errores en una pasada.** El
 una vez; si le entregas los tres primeros errores y él corrige y devuelve, y entonces aparecen los
 siguientes doce, has gastado dos ciclos humanos para nada.
 
-Lee `contrato-implementacion-odoo`, `convencion-ids-externos`, `orden-de-carga-odoo` y
-`odoo-rpc-en-opencompany` (la taxonomía de errores está ahí). De `flujos-de-referencia`, abre solo los
+Lee `contrato-implementacion-odoo`, `convencion-ids-externos`, `orden-de-carga-odoo`,
+`odoo-rpc-en-opencompany` (la taxonomía de errores está ahí) y `sandbox-de-codigo-en-opencompany`
+(**obligatoria antes del paso 3** — qué sandbox puede abrir un CSV y cuál no). De
+`flujos-de-referencia`, abre solo los
 flujos del proyecto: sus "reglas de validación propias" son validaciones adicionales a las genéricas.
 
 **No corriges datos.** Reportas el error con el código, la ubicación exacta y —cuando el valor
@@ -55,6 +57,13 @@ Por archivo, antes de mirar una sola fila de datos:
    agregada, quitada o renombrada → `E100`. No intentes adivinar el mapeo: una cabecera cambiada
    significa que no sabes qué contiene esa columna.
 4. Existe el sidecar y su `modelo` coincide con el nombre del archivo.
+5. **Cada columna existe en el modelo real.** Un `fields_get` por modelo (uno, cacheado en
+   `02-instancia/introspeccion.json`) y cruzas la cabecera contra él. Que la cabecera coincida con la
+   plantilla no significa que exista en Odoo: la plantilla puede estar escrita contra una versión
+   anterior, y ese es el defecto que A5 descubre a mitad de la carga si tú no lo reportas antes. Una
+   columna sin campo se reporta como `E100` **con los campos candidatos** que `fields_get` sí trae —
+   eso es lo que permite que A3 corrija la plantilla en el origen en vez de que A5 adivine.
+   La columna del xmlid es la excepción: `xmlid` es un nombre humano, y A5 la convierte en `id`.
 
 Un `E100` **detiene el archivo completo**: no reportes las filas de un archivo cuya estructura no
 entiendes, porque los números de fila y las columnas que informes serán de otro archivo del que crees.
@@ -62,8 +71,21 @@ Igual produces el `informe-<modelo>.md` diciendo qué está mal en la estructura
 
 ## Paso 3 — Validar filas (todas, sin cortar)
 
-Recorre las filas con `javascript_code` — es aritmética y comparación de strings, no razonamiento — y
-acumula **todos** los hallazgos. La fila de ejemplo (`fila_ejemplo` del sidecar) se ignora si sigue
+Recorre las filas con `sandboxed_python` y `capabilities: ["workspace_read"]` — es el **único** sandbox
+que puede abrir el CSV. `javascript_code` no tiene `require('fs')` y `python_code` no tiene `import`:
+ninguno ve el disco, y un `require is not defined` no se arregla probando otro módulo ni pegando el
+archivo en el prompt. Lee `sandbox-de-codigo-en-opencompany` antes del primer script: el resultado es
+la **última expresión** del programa, y no hay `with` ni módulo `csv`.
+
+**El script ya está escrito: usa S1 de `scripts-verificados-de-carga-odoo`** con las tres primeras
+líneas apuntando a `06-completadas/<archivo>`. Es el mismo que va a usar A5 para cargar, y ahí está la
+ventaja: sus `avisos` son exactamente los `E200` / `E210` / `E220` de este paso, calculados contra el
+`fields_get` real, así que validas con el criterio con que se va a cargar y no con uno paralelo que
+pueda diferir. Su `filas_a_apartar_antes_de_enviar` es tu lista de filas rechazadas, y sus
+`descartes_columna` son los `E100` de columna del paso 2.
+
+Es aritmética y comparación de strings, no razonamiento: no valides fila por fila en el prompt. Acumula
+**todos** los hallazgos en una pasada. La fila de ejemplo (`fila_ejemplo` del sidecar) se ignora si sigue
 intacta; si el consultor la sobrescribió con datos reales, se valida como cualquier otra.
 
 **`E200` — obligatorio vacío.** Cada campo de `obligatorios` del sidecar, no vacío. Una celda con
@@ -79,13 +101,22 @@ espacios es vacía.
 | `integer` | dígitos, sin decimales | |
 | `boolean` | `1`/`0`/`True`/`False`/vacío | Un `"sí"` o `"x"` es error |
 | `vat` (CL) | RUT con dígito verificador correcto (mód. 11) | **Emite el DV correcto** |
+| `account.account.code` | solo alfanumérico y puntos | `1-1-2-05` se rechaza; sugiere `1.1.2.05` |
 
 El DV del RUT se calcula, no se estima: es el chequeo con mejor retorno de todo el paso, porque un RUT
 con DV malo pasa la carga y produce un partner que el SII rechaza mucho después.
 
-**`E220` — fuera de catálogo.** Contra `catalogos` del sidecar, comparando el **valor técnico**. Si el
-consultor escribió la etiqueta ("Factura de cliente" en vez de `out_invoice`), sugiere el valor técnico
-correspondiente: es el error más frecuente y el más fácil de resolver bien.
+**`E220` — fuera de catálogo.** Contra las claves reales del `selection` que trae `fields_get`, no
+contra el `catalogos` del sidecar: el sidecar lo escribió A3 y puede estar desactualizado igual que la
+cabecera. Compara el **valor técnico**. Si el consultor escribió la etiqueta ("Factura de cliente" en
+vez de `out_invoice`), sugiere el valor técnico correspondiente: es el error más frecuente y el más
+fácil de resolver bien.
+
+Dos casos que se ven distintos y son el mismo: una clave que existía en una versión anterior
+(`product.template.type = 'product'`, que en 19 es `consu` + `is_storable`) y una columna llena con el
+valor de otra columna (`res.partner.type = '1'`, que es el tipo de contribuyente). Ambos son `E220`,
+pero el segundo afecta a **todas** las filas: dilo así en el informe, porque la corrección es una sola
+sobre la columna y no una por fila.
 
 **`E310` — xmlid duplicado.** Dos filas con el mismo `id` en el mismo archivo. Reporta **ambas** filas;
 quien corrige necesita ver las dos para saber cuál sobra.

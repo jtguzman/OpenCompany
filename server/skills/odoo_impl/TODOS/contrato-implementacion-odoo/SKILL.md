@@ -47,19 +47,33 @@ el orden del proceso, no una jerarquía.
 proyecto/
 ├── 00-entrada/          epicas.md, historias.csv, alcance.md
 ├── 01-analisis/         matriz-brechas.csv, supuestos.md, preguntas-abiertas.md
-├── 02-instancia/        introspeccion.json, modulos-instalados.json
+├── 02-instancia/        introspeccion.json, modulos-instalados.json, capacidades-instancia.json
 ├── 03-blueprint/        blueprint.yaml, decisiones.md
 ├── 04-backlog/          tareas.yaml
 ├── 05-plantillas/       NN_<modelo>.csv, NN_<modelo>.meta.json, INSTRUCTIVO.md
 ├── 06-completadas/      (idem 05, devueltas por el consultor)
 ├── 07-validacion/       informe-<modelo>.md, errores-<modelo>.csv
-├── 08-carga/            bitacora-<modelo>.jsonl, resumen-carga.md
+├── 08-carga/            plan-carga.json, estado-carga.json, bitacora-<modelo>.jsonl, resumen-carga.md
 └── 09-qa/               casos.yaml, resultados-<flujo>.md, evidencia/
 ```
 
 **Regla dura: un agente nunca escribe en la carpeta de otro.** Si necesita corregir algo aguas
 arriba, escribe una observación en `01-analisis/preguntas-abiertas.md` y devuelve el control al
 Coordinador. Esto evita que dos agentes se pisen editando el mismo artefacto.
+
+**Única excepción: `02-instancia/capacidades-instancia.json`.** A1 lo crea, y A5 le **agrega** durante
+la carga los hechos que solo se descubren escribiendo: métodos que la instancia no expone
+(`metodos_bloqueados`), remapeos de cabecera confirmados (`remapeos_confirmados`), campos inexistentes
+(`campos_inexistentes`), claves de `selection` verificadas (`valores_confirmados`), xmlids que sí
+existen detrás de uno que no y la vía por la que se resolvieron (`xmlids_resueltos`), referencias
+ausentes con su causa y su dueño humano (`xmlids_inexistentes`), el estado de los módulos del plan
+(`modulos`), los ajustes de `res.config.settings` que encendió y su valor anterior
+(`ajustes_aplicados`), las reglas de xmlid que verificó con su evidencia y su contraejemplo
+(`reglas_de_xmlid`), qué script usó para cada etapa y contra qué se verificó (`scripts`), el tamaño de
+lote que aguantó (`lote_optimo`) y el cierre de la corrida (`resultado_ultimo_ensayo`). Es memoria de *esta* instancia para que la próxima corrida no la
+redescubra. La excepción se sostiene porque solo se agregan entradas —`resultado_ultimo_ensayo` es la
+única clave que se sobrescribe, porque describe la corrida en curso—: A5 no reescribe ni corrige lo que
+A1 introspeccionó, y nunca toca `introspeccion.json`.
 
 ## Formatos exactos
 
@@ -254,6 +268,7 @@ archivos, no incrustan contenido.
 |---|---|---|
 | Paso siguiente (NO es campo: es el `assign_task`) | Solo el Coordinador | — |
 | `01-analisis/*`, `02-instancia/*`, `instancia.*` | A1 (Analiza e Introspecciona) | A2, A3, A4, A5 |
+| `02-instancia/capacidades-instancia.json` | A1 lo crea; **A5 le agrega** (única excepción a la regla dura) | A2, A3, A4 |
 | `03-blueprint/*`, `04-backlog/*`, `proyecto.prefijo_xmlid` | A2 (Blueprint y Backlog) | A3, A4, A5 |
 | `05-plantillas/*` | A3 (Genera Plantillas) | consultor humano, A4 |
 | `06-completadas/*` | **El consultor humano** (único punto no-agente) | A4, A5 |
