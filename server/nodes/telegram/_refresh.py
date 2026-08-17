@@ -92,5 +92,22 @@ async def precheck_telegram_trigger(parameters: Dict) -> str | None:
     if not service.connected:
         return "Telegram bot not connected. Add bot token in Credentials."
     sender_filter = parameters.get("sender_filter", "all")
+
+    # A bot never receives its own messages, so ``specific_chat`` pinned to
+    # the bot's own id matches nothing: the service accepts every update and
+    # the filter drops all of them, which reads as "the message arrives but
+    # the agent never runs". The id is easy to pick by mistake — the
+    # Credentials panel shows it as the bot identity. Say so instead of
+    # waiting silently.
+    chat_id_filter = str(parameters.get("chat_id", "") or "")
+    bot_id = str(service.get_status().get("bot_id") or "")
+    if sender_filter == "specific_chat" and chat_id_filter and chat_id_filter == bot_id:
+        return (
+            f"Telegram Receive is filtered to chat {chat_id_filter}, which is the "
+            "bot's own id — no incoming message can ever match it. Use the chat id "
+            "of the person or group that writes to the bot, or set the filter to "
+            "'all'."
+        )
+
     logger.info("[TelegramTrigger] starting " f"sender_filter={sender_filter} " f"owner_detected={service.owner_chat_id is not None}")
     return None

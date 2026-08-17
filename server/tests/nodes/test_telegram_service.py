@@ -561,3 +561,53 @@ def test_media_content_types_covers_every_downloadable_kind():
         "sticker",
         "document",
     }
+
+
+# ---------------------------------------------------------------------------
+# trigger precheck
+# ---------------------------------------------------------------------------
+
+
+def _precheck_service(*, bot_id: int, connected: bool = True):
+    service = MagicMock()
+    service.connected = connected
+    service.owner_chat_id = None
+    service.get_status = MagicMock(return_value={"bot_id": bot_id})
+    return service
+
+
+@pytest.mark.asyncio
+async def test_precheck_rejects_specific_chat_pinned_to_the_bot_itself(monkeypatch):
+    """A bot never receives its own messages, so this filter matches nothing.
+
+    Observed live: the service accepted every update and the filter dropped
+    all of them, so the message arrived and the agent never ran — no error
+    anywhere. The precheck must name the mistake.
+    """
+    from nodes.telegram import _refresh
+    from nodes.telegram import _service as tg_service
+
+    monkeypatch.setattr(
+        tg_service, "get_telegram_service", lambda: _precheck_service(bot_id=8712094692)
+    )
+    error = await _refresh.precheck_telegram_trigger(
+        {"sender_filter": "specific_chat", "chat_id": "8712094692"}
+    )
+    assert error is not None
+    assert "bot's own id" in error
+
+
+@pytest.mark.asyncio
+async def test_precheck_allows_a_real_counterpart_chat(monkeypatch):
+    from nodes.telegram import _refresh
+    from nodes.telegram import _service as tg_service
+
+    monkeypatch.setattr(
+        tg_service, "get_telegram_service", lambda: _precheck_service(bot_id=8712094692)
+    )
+    assert (
+        await _refresh.precheck_telegram_trigger(
+            {"sender_filter": "specific_chat", "chat_id": "8386124997"}
+        )
+        is None
+    )
