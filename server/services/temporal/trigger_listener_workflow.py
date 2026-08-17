@@ -594,10 +594,7 @@ def _build_run_graph(
     marks sibling triggers ``_pre_executed=True`` with ``{not_triggered:
     True}`` so MachinaWorkflow doesn't try to wait on them.
     """
-    from constants import (
-        AI_AGENT_TYPES,
-        WORKFLOW_TRIGGER_TYPES,
-    )
+    from constants import WORKFLOW_TRIGGER_TYPES
 
     node_types = {n["id"]: n.get("type", "") for n in nodes}
 
@@ -619,25 +616,35 @@ def _build_run_graph(
 
     _collect(trigger_node_id)
 
-    # Config nodes (memory, tools, etc.) connected to downstream nodes.
-    for edge in edges:
-        target = edge.get("target")
-        source = edge.get("source")
-        handle = edge.get("targetHandle") or edge.get("target_handle") or ""
-        is_config = handle and handle.startswith("input-") and handle != "input-main"
-        if is_config and target in downstream_ids and source not in downstream_ids:
-            if node_types.get(source, "") in WORKFLOW_TRIGGER_TYPES:
-                continue
-            downstream_ids.add(source)
-
-    # Tool nodes connected to AI Agent's input-tools handle.
-    agent_ids = {n["id"] for n in nodes if n.get("type") in AI_AGENT_TYPES and n["id"] in downstream_ids}
-    for edge in edges:
-        target = edge.get("target")
-        source = edge.get("source")
-        handle = edge.get("targetHandle") or edge.get("target_handle") or ""
-        if target in agent_ids and handle == "input-tools" and source not in downstream_ids:
-            downstream_ids.add(source)
+    # Config nodes (context, skills, tools, teammates, …) connected to nodes
+    # already in the run.
+    #
+    # This MUST be a fixpoint, not a single ordered pass. A config edge only
+    # contributes when its *target* is already in ``downstream_ids``, and this
+    # loop itself grows that set: a team lead pulls in its teammates via
+    # ``input-teammates``, and each teammate then brings its own Master Skill
+    # and Context nodes. With one pass those second-level config edges are
+    # silently dropped whenever they appear earlier in ``edges`` than the
+    # teammate edge that admitted their target — which is the normal ordering,
+    # since a node's own config edges are drawn before it is wired to a lead.
+    # Symptom when this regresses: every worker agent runs with
+    # "Collected: 0 skills, N tools, context=no" while the team lead gets its
+    # skills, i.e. the workers silently lose their runbooks. Tools survived the
+    # single-pass version only by accident of edge order.
+    while True:
+        grew = False
+        for edge in edges:
+            target = edge.get("target")
+            source = edge.get("source")
+            handle = edge.get("targetHandle") or edge.get("target_handle") or ""
+            is_config = handle and handle.startswith("input-") and handle != "input-main"
+            if is_config and target in downstream_ids and source not in downstream_ids:
+                if node_types.get(source, "") in WORKFLOW_TRIGGER_TYPES:
+                    continue
+                downstream_ids.add(source)
+                grew = True
+        if not grew:
+            break
 
     run_filter = {trigger_node_id} | downstream_ids
     filtered_nodes: List[Dict[str, Any]] = []

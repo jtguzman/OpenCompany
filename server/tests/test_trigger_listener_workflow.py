@@ -248,6 +248,50 @@ class TestBuildRunGraph:
         assert {node["id"] for node in filtered_nodes} == {"task-trigger", "lead", "todos"}
         assert any(edge["source"] == "todos" for edge in filtered_edges)
 
+    def test_second_level_config_nodes_survive_adverse_edge_order(self):
+        """Config collection is a fixpoint, not a single ordered pass.
+
+        A team lead pulls in its teammates via ``input-teammates``, and each
+        teammate then brings its own Master Skill + Context. Those
+        second-level config edges are normally drawn *before* the teammate
+        edge that admits their target (a node is wired to its own skills
+        before it is wired to a lead), so a single pass over ``edges``
+        silently drops them: the workers run with 0 skills while the lead
+        keeps its own. Edge order below is the adverse one on purpose.
+        """
+        from services.temporal.trigger_listener_workflow import _build_run_graph
+
+        nodes = [
+            _node("task-trigger", "taskTrigger"),
+            _node("lead", "orchestrator_agent"),
+            _node("worker", "tool_agent"),
+            _node("worker-skill", "masterSkill"),
+            _node("worker-ctx", "context"),
+        ]
+        edges = [
+            # Worker's own config edges come first — before the worker is
+            # known to be part of the run.
+            _edge("worker-skill", "worker", target_handle="input-skill"),
+            _edge("worker-ctx", "worker", target_handle="input-context"),
+            _edge("task-trigger", "lead", target_handle="input-task"),
+            _edge("worker", "lead", target_handle="input-teammates"),
+        ]
+
+        filtered_nodes, filtered_edges = _build_run_graph(
+            trigger_node_id="task-trigger", trigger_output={}, nodes=nodes, edges=edges,
+        )
+
+        ids = {node["id"] for node in filtered_nodes}
+        assert ids == {"task-trigger", "lead", "worker", "worker-skill", "worker-ctx"}
+        # The worker must still see both config edges, or collect_agent_connections
+        # reports "0 skills, context=no".
+        handles = {
+            (edge["source"], edge.get("targetHandle") or edge.get("target_handle"))
+            for edge in filtered_edges
+            if edge["target"] == "worker"
+        }
+        assert handles == {("worker-skill", "input-skill"), ("worker-ctx", "input-context")}
+
     def test_stops_at_downstream_trigger_nodes(self):
         """Downstream collection stops at trigger nodes (n8n pattern):
         each trigger is an independent event listener. taskTrigger fires
