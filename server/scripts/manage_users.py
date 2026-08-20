@@ -17,6 +17,7 @@ Run from ``server/`` so ``Settings`` finds ``../.env``:
     .venv/bin/python scripts/manage_users.py list
     .venv/bin/python scripts/manage_users.py add --email a@b.cl --name "A B"
     .venv/bin/python scripts/manage_users.py passwd --email a@b.cl
+    .venv/bin/python scripts/manage_users.py rename --email a@b.cl --name "A Better Name"
     .venv/bin/python scripts/manage_users.py disable --email a@b.cl
     .venv/bin/python scripts/manage_users.py enable  --email a@b.cl
     .venv/bin/python scripts/manage_users.py remove  --email a@b.cl
@@ -145,6 +146,16 @@ async def _run(args: argparse.Namespace) -> int:
                   "account instead if access must stop now.")
             return 0
 
+        if args.command == "rename":
+            user, error = await service.set_user_display_name(args.email, args.name)
+            if user is None:
+                print(f"FAILED: {error}", file=sys.stderr)
+                return 1
+            print(f"{user.email} is now displayed as {user.display_name}")
+            print("An open session keeps the old name until the next login "
+                  "(the name rides in the JWT).")
+            return 0
+
         if args.command == "remove":
             email, error = await service.delete_user(args.email)
             if email is None:
@@ -185,6 +196,10 @@ def main() -> int:
     passwd = sub.add_parser("passwd", help="reset an account password")
     passwd.add_argument("--email", required=True)
     passwd.add_argument("--password", help="omit to generate a strong one and print it once")
+
+    rename = sub.add_parser("rename", help="change an account display name")
+    rename.add_argument("--email", required=True)
+    rename.add_argument("--name", required=True, help="new display name, 100 characters or fewer")
 
     for name, help_text in (
         ("disable", "block sign-in (reversible, keeps the row)"),

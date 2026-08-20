@@ -402,6 +402,29 @@ class TestPasswordReset:
         assert error == "No such account"
 
 
+class TestSetUserDisplayName:
+    async def test_renames(self, user_auth):
+        await _register(user_auth)
+        user, error = await user_auth.set_user_display_name("OWNER@example.com", "  New Name  ")
+        assert error is None
+        assert user.display_name == "New Name"
+        assert (await user_auth.get_user_by_email("owner@example.com")).display_name == "New Name"
+
+    async def test_applies_the_same_name_rules_as_creation(self, user_auth):
+        await _register(user_auth)
+        for name, expected in [("   ", "Display name is required"), ("x" * 101, "100 characters or fewer")]:
+            user, error = await user_auth.set_user_display_name("owner@example.com", name)
+            assert user is None
+            assert expected in error
+        # The stored name is untouched by a rejected rename.
+        assert (await user_auth.get_user_by_email("owner@example.com")).display_name == "Owner"
+
+    async def test_unknown_account(self, user_auth):
+        user, error = await user_auth.set_user_display_name("nobody@example.com", "Nobody")
+        assert user is None
+        assert error == "No such account"
+
+
 class TestSetUserActive:
     async def test_disabling_blocks_login(self, user_auth):
         await _register(user_auth)

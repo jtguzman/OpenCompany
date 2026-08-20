@@ -42,6 +42,21 @@ _DUMMY_PASSWORD_HASH = b"$2b$12$C6UzMDM.H6dfI/f/IKcEe.6Vc/qGgQEHOQKMxLbLQ3vRhBnG
 _EMAIL_ADAPTER = TypeAdapter(EmailStr)
 
 
+def _validate_display_name(display_name: str) -> tuple[str, Optional[str]]:
+    """Normalise a display name. Returns ``(name, None)`` or ``("", error)``.
+
+    Its own function because creation and rename must agree: the column is
+    ``max_length=100`` and SQLite truncates silently rather than raising, so a
+    path that skips the cap stores altered data.
+    """
+    display_name = (display_name or "").strip()
+    if not display_name:
+        return "", "Display name is required"
+    if len(display_name) > 100:
+        return "", "Display name must be 100 characters or fewer"
+    return display_name, None
+
+
 def _validate_account_input(
     email: str, password: str, display_name: str
 ) -> tuple[str, str, Optional[str]]:
@@ -50,19 +65,14 @@ def _validate_account_input(
     Returns ``(normalized_email, display_name, None)`` or
     ``(*, *, error_message)``. Factored out so the public ``/register``
     endpoint and the operator provisioning path cannot drift apart on what
-    counts as a valid account -- the display-name truncation rule below is
-    silent data corruption if only one caller enforces it.
+    counts as a valid account.
     """
     if len(password) < 8:
         return "", "", "Password must be at least 8 characters"
 
-    display_name = (display_name or "").strip()
-    if not display_name:
-        return "", "", "Display name is required"
-    # The column is max_length=100 and SQLite truncates silently rather
-    # than raising, so an over-long name would be stored altered.
-    if len(display_name) > 100:
-        return "", "", "Display name must be 100 characters or fewer"
+    display_name, name_error = _validate_display_name(display_name)
+    if name_error:
+        return "", "", name_error
 
     normalized_email = (email or "").lower().strip()
     if not normalized_email:
@@ -255,6 +265,32 @@ class UserAuthService:
             await session.refresh(user)
 
         logger.info("Password reset by operator for user id=%s", user.id)
+        return user, None
+
+    async def set_user_display_name(self, email: str, display_name: str) -> tuple[Optional[User], Optional[str]]:
+        """Rename an account (operator path).
+
+        The name is cosmetic -- it is not an identifier anywhere; ``sub`` and
+        the email carry identity. It does ride in the JWT payload, though, so a
+        session opened before the rename keeps showing the old name until its
+        token is reissued at next login.
+        """
+        name, error = _validate_display_name(display_name)
+        if error:
+            return None, error
+
+        normalized_email = (email or "").lower().strip()
+        async with self.database.get_session() as session:
+            user = (
+                await session.execute(select(User).where(User.email == normalized_email))
+            ).scalars().first()
+            if user is None:
+                return None, "No such account"
+            user.display_name = name
+            await session.commit()
+            await session.refresh(user)
+
+        logger.info("Display name changed by operator for user id=%s", user.id)
         return user, None
 
     async def set_user_active(self, email: str, active: bool) -> tuple[Optional[User], Optional[str]]:
