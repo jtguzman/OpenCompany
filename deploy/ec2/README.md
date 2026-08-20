@@ -21,6 +21,8 @@ loopback port.
 - `deploy.sh` — run on your machine. Builds, packages, uploads, invokes bootstrap.
 - `bootstrap.sh` — runs on the host. Installs Node 22 + uv, creates `appuser`,
   unpacks, `uv sync`, writes supervisor + nginx config, starts, health-checks.
+- `users.sh` — run on your machine. Manages login accounts on the host, see
+  [Adding users](#adding-users).
 - `conf/opencompany.supervisor.conf`, `conf/opencompany.nginx.conf` — templates
   with `__OC_PORT__` / `__OC_DOMAIN__` placeholders.
 - `env.production.template` — rendered once to `/opt/opencompany/.env`.
@@ -75,14 +77,20 @@ then on, so later deploys cannot clobber the TLS block.
 ## Adding users
 
 Registration is closed once the owner account exists, and there is no admin UI.
-Add further logins with the operator CLI on the host — as `appuser`, because
+Add further logins from your machine with `users.sh` (needs a valid `aws login`
+session; it pushes an ephemeral key and runs the CLI on the host):
+
+```bash
+./deploy/ec2/users.sh list
+./deploy/ec2/users.sh add --email person@example.com --name "Person Name"
+```
+
+The equivalent directly on the host — as `appuser`, because
 `/opt/opencompany/.env` is `0600` and owned by it:
 
 ```bash
 cd /opt/opencompany/server
 sudo -u appuser env HOME=/home/appuser .venv/bin/python scripts/manage_users.py list
-sudo -u appuser env HOME=/home/appuser .venv/bin/python scripts/manage_users.py \
-    add --email person@example.com --name "Person Name"
 ```
 
 `add` prints a generated password once (only the bcrypt hash is stored); pass
