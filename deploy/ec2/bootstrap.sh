@@ -107,12 +107,27 @@ if [[ -f "$APP_DIR/.env" ]]; then
 else
     [[ -n "$DOMAIN" ]] || { echo "--domain is required on first install" >&2; exit 2; }
     say "Rendering .env"
-    sed -e "s|__OC_DOMAIN__|${DOMAIN}|g" \
-        -e "s|__OC_PORT__|${PORT_VALUE}|g" \
-        -e "s|__GENERATED_SECRET_KEY__|$(openssl rand -hex 32)|" \
-        -e "s|__GENERATED_JWT_SECRET_KEY__|$(openssl rand -hex 32)|" \
-        -e "s|__GENERATED_API_KEY_ENCRYPTION_KEY__|$(openssl rand -hex 32)|" \
-        "$APP_DIR/deploy/ec2/env.production.template" > "$APP_DIR/.env"
+    # .env.template FIRST, then the production overrides. Many Settings fields
+    # are declared without a Python default, so a .env holding only the
+    # overrides fails startup with "Field required" on a dozen Temporal keys --
+    # the template is not documentation, it is the defaults file.
+    #
+    # Duplicate keys are safe and intentional: python-dotenv and
+    # pydantic-settings both take the LAST assignment, so the appended block
+    # wins over the template's dev values. Verified, not assumed.
+    {
+        cat "$APP_DIR/.env.template"
+        printf '\n\n# ===================================================================\n'
+        printf '# Production overrides (deploy/ec2/env.production.template).\n'
+        printf '# Appended last on purpose: the last assignment of a key wins.\n'
+        printf '# ===================================================================\n'
+        sed -e "s|__OC_DOMAIN__|${DOMAIN}|g" \
+            -e "s|__OC_PORT__|${PORT_VALUE}|g" \
+            -e "s|__GENERATED_SECRET_KEY__|$(openssl rand -hex 32)|" \
+            -e "s|__GENERATED_JWT_SECRET_KEY__|$(openssl rand -hex 32)|" \
+            -e "s|__GENERATED_API_KEY_ENCRYPTION_KEY__|$(openssl rand -hex 32)|" \
+            "$APP_DIR/deploy/ec2/env.production.template"
+    } > "$APP_DIR/.env"
     # 0600: the file holds the credential-encryption key.
     chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"
     chmod 600 "$APP_DIR/.env"
@@ -167,9 +182,12 @@ fi
 # ---------------------------------------------------------------------------
 # 9. start + verify
 # ---------------------------------------------------------------------------
+# restart, not start: `supervisorctl update` already autostarted the program,
+# so `start` would answer "ERROR (already started)" and skip the reload of a
+# re-deployed tree.
 say "Starting ${APP}"
-supervisorctl start "$APP" || true
-sleep 8
+supervisorctl restart "$APP" || true
+sleep 10
 supervisorctl status "$APP" || true
 
 say "Health check"
