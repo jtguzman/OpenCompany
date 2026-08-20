@@ -71,6 +71,55 @@ class User(SQLModel, table=True):
   non-numeric `sub` and any account with `is_active = False`
 - `get_auth_status()` - Returns `auth_mode` and `registration_enabled`
 - `logout()` - A no-op log line. See Known Limitations.
+- `provision_user()` - Operator counterpart to `register()`: same
+  `_validate_account_input` rules, same one-session check-then-insert, but it
+  **bypasses the `can_register()` mode gate**. Reached only from
+  `server/scripts/manage_users.py`; there is no HTTP route, because exposing one
+  would need an authorization model the app does not have (`is_owner` is
+  decorative). Ownership is not a parameter — it is granted only when the table
+  is empty, so provisioning can bootstrap an empty deployment but can never mint
+  a second owner.
+- `set_user_password()` / `set_user_active()` / `delete_user()` / `list_users()` -
+  The rest of the operator surface. `set_user_password` does not invalidate live
+  sessions (no `jti` denylist); `set_user_active(False)` does. Both
+  `set_user_active(False)` and `delete_user` refuse the owner, which would leave
+  nobody able to sign in and no way back.
+
+Validation for every creation path lives in one place, the module-level
+`_validate_account_input()`. Two rules there are load-bearing:
+
+- **The email must satisfy `EmailStr`.** `LoginRequest.email` is an `EmailStr`,
+  so an account whose address fails that check 422s at the edge before any
+  credential is looked at — it can never sign in. The router validates the two
+  HTTP paths, but provisioning has no FastAPI model in front of it, so the check
+  belongs in the service. Without it the CLI silently creates dead accounts
+  (`someone@example.invalid` is a special-use domain and is rejected).
+- **The display name is capped at 100 characters.** The column is
+  `max_length=100` and SQLite truncates silently instead of raising, so a caller
+  that skips the check stores altered data.
+
+### Adding users to a deployed instance
+
+`AUTH_MODE=single` closes `/register` once the owner exists, so a second login
+comes from the operator CLI — run from `server/`, as the user that owns the
+`.env`:
+
+```bash
+.venv/bin/python scripts/manage_users.py list
+.venv/bin/python scripts/manage_users.py add --email person@example.com --name "Person"
+.venv/bin/python scripts/manage_users.py passwd  --email person@example.com
+.venv/bin/python scripts/manage_users.py disable --email person@example.com   # reversible
+.venv/bin/python scripts/manage_users.py remove  --email person@example.com   # drops the row
+```
+
+`add`/`passwd` generate a strong password and print it once when `--password` is
+omitted; only the bcrypt hash is stored. No restart is needed (accounts are read
+per request), and it is safe against a live instance — one short SQLite write
+lock.
+
+The alternative, `AUTH_MODE=multi`, opens registration to anyone who can reach
+the URL. Both routes land in the same shared workspace: read the first Known
+Limitation below before choosing either.
 
 **`UserAuthService` does not touch the encryption service.** Earlier revisions
 of this document described `login()` calling `_initialize_encryption(password)`
